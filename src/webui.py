@@ -1,6 +1,6 @@
 import gradio as gr
 import logging
-from .chatgpt import ChatGpt
+from .chat import Chat
 from .azuretts import AzureTts
 from typing import Any, List, Tuple
 import uuid
@@ -9,8 +9,8 @@ logger = logging.getLogger(__file__)
 
 
 class WebUI:
-    def __init__(self, chatInterface: ChatGpt, ttsInterface: AzureTts, args):
-        self._chat: ChatGpt = chatInterface
+    def __init__(self, chatInterface: Chat, ttsInterface: AzureTts, args):
+        self._chat: Chat = chatInterface
         self._tts: AzureTts = ttsInterface
         self._uiChatbot: gr.Chatbot = None
         self._uiState: gr.State = None
@@ -43,8 +43,10 @@ class WebUI:
                 voiceList = self._tts.getVoices()
                 styleList = self._tts.getStyles()
                 self._uiAutoPlay = gr.Checkbox(label="Speak Responses", value=False)
-                self._uiVoicesList = gr.Dropdown(label="Voices", multiselect=False, choices=voiceList, value=voiceList[0])
-                self._uiStylesList = gr.Dropdown(label="Styles", multiselect=False, choices=styleList, value=styleList[0])
+                self._uiVoicesList = gr.Dropdown(label="Voices", multiselect=False,
+                                                 choices=voiceList, value=voiceList[0])
+                self._uiStylesList = gr.Dropdown(label="Styles", multiselect=False,
+                                                 choices=styleList, value=styleList[0])
                 self._pitchText = gr.Textbox(label="Pitch")
                 self._rateText = gr.Textbox(label="Rate")
 
@@ -56,12 +58,13 @@ class WebUI:
 
         self._uiSpeakText.change(self.handleSpeakResponse, inputs=[
                                  self._uiSpeakText, self._uiAutoPlay], outputs=[self._uiDummyObj, self._uiAudio])
-        self._uiDummyObj.change(self.handleDummyChange, _js="check_for_audio", inputs=[self._uiAudio, self._uiDummyObj], outputs=[self._uiDummyObj])
+        self._uiDummyObj.change(self.handleDummyChange, _js="check_for_audio", inputs=[
+                                self._uiAudio, self._uiDummyObj], outputs=[self._uiDummyObj])
         self._uiVoicesList.change(self.handleVoiceNameChange, inputs=[self._uiVoicesList], outputs=[self._uiStylesList])
         self._uiStylesList.change(self.handleStyleChange, inputs=[self._uiStylesList])
         self._pitchText.change(lambda x: self._tts.setPitch(x), inputs=[self._pitchText])
         self._rateText.change(lambda x: self._tts.setRate(x), inputs=[self._rateText])
-        clear_btn.click(lambda: self._chat.clear(), inputs=[], outputs=[] )
+        clear_btn.click(lambda: self._chat.clear(), inputs=[], outputs=[])
 
         self._uiAudio.play(lambda: logger.info("Play"))
         self._uiAudio.stop(lambda: logger.info("Stop"))
@@ -73,7 +76,6 @@ class WebUI:
         else:
             logger.info("Audio not ready, retrying")
             return WebUI.triggerChangeEvent(),
-
 
     def handleVoiceNameChange(self, *args, **kwargs):
         voiceName, = args
@@ -88,8 +90,19 @@ class WebUI:
 
     def submitText(self, *args, **kwargs) -> Tuple[Tuple[str, str], str]:
         inputText, = args
-        response = self._chat.sendText(inputText)
-        return self._chat.getHistory(), response
+        response = self._chat.send_text(inputText)
+
+        history = self._chat.get_history()
+        # Convert to Gradio's (user, ai) format
+        chat_output: List[Tuple[str, str]] = []
+        for role, response in history:
+            msg = f"{role.upper()}: {response}"
+            if role == Chat.Roles.AI:
+                chat_output.append((None, msg))
+            else:
+                chat_output.append((msg, None))
+
+        return chat_output, response
 
     def handleSpeakResponse(self, *args, **kwargs) -> Tuple[int, np.array]:
         response_text, speak_response = args
