@@ -84,7 +84,7 @@ class WebUI:
 
         self._uiVoicesList.change(self._handleVoiceNameChange, inputs=[
             self._uiState, self._uiVoicesList], outputs=[self._uiStylesList])
-        clear_btn.click(lambda state: self._chat.clear(), inputs=[self._uiState], outputs=[])
+        clear_btn.click(fn=self._handleClearClick, inputs=[self._uiState], outputs=[self._uiChatbot])
 
         self._uiSpeakBtn.click(fn=self._clear_component, inputs=[], outputs=[self._uiAudioPlayer])
         self._uiSpeakBtn.click(fn=None, _js="start_listen_for_audio_component_updates")
@@ -115,6 +115,10 @@ class WebUI:
 
         server_name = "0.0.0.0" if listen else None
         self._app.launch(server_name=server_name, server_port=port)
+
+    def _handleClearClick(self, *args, **kwargs):
+        self._chat.clear()
+        return []
 
     def _handleAudioRelayTriggered(self, *args, **kwargs):
         ''' Relay a signal to load the AudioPlayer '''
@@ -155,7 +159,7 @@ class WebUI:
 
         self._tts_queue.start_synthesis(response_text, voice)
         logger.info("Waiting for first samples...")
-        success = self._tts_queue.wait_for_audio(timeout=30)
+        success = self._tts_queue.wait_for_audio(timeout=240)
 
         if success:
             logger.info("First samples received! Triggering audio")
