@@ -1,24 +1,20 @@
 ''' ChatBot main entry point '''
 import argparse
 import logging
+import os
 import sys
 import gradio as gr
+import pathlib
+import glob
 
 from src.webui import WebUI
+from src.chatgpt import ChatGpt
+from src.azuretts import AzureTts
 
 logging.basicConfig(stream=sys.stdout)
 logger = logging.getLogger(__file__)
 
-# fmt: off
-#sys.path.append(os.path.join(pathlib.Path(__file__), "src"))
-# submodules_dir = os.path.join(pathlib.Path(__file__).parent.resolve(), "submodules")
-# sys.path.append(submodules_dir)
-# from src.config import Config
-# from src.contextChecker import ContextChecker
-# from src.mqttClient import MqttClient
-# from src.watchedObject import WatchedObject
-# from src.watcher import Watcher
-# fmt: on
+script_dir = pathlib.Path(__file__).parent.resolve()
 
 
 def parseArgs():
@@ -27,6 +23,12 @@ def parseArgs():
     parser.add_argument('--verbose', '-v', help="Verbose", action='store_true', default=False)
     parser.add_argument('--listen', help="Listen on public network interface", action='store_true', default=False)
     parser.add_argument('--port', '-p', help="Port to listen on", type=int, default=5981)
+    parser.add_argument("--openai-api-key", help="OpenAI API key", type=str,
+                        default=os.getenv("OPENAI_API_KEY", "No Key Set"))
+    parser.add_argument("--azure-api-key", help="Azure API key", type=str,
+                        default=os.getenv("AZURE_API_KEY", "No Key Set"))
+    parser.add_argument("--azure-api-region", help="Azure API Region",
+                        default=os.getenv("AZURE_API_REGION", "centralus"))
 
     return parser.parse_args()
 
@@ -40,8 +42,13 @@ if __name__ == "__main__":
     if args.verbose:
         logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, force=True)
 
+    scripts = glob.glob(os.path.join(script_dir, "javascript", "*.js"))
+
     with gr.Blocks() as app:
-        ui = WebUI(args)
+        chatGpt = ChatGpt(api_key=args.openai_api_key)
+        azureTts = AzureTts(api_key=args.azure_api_key, api_region=args.azure_api_region)
+        ui = WebUI(chatInterface=chatGpt, ttsInterface=azureTts, args=args)
         ui.buildInterface()
+        ui.injectScripts(scripts)
         server_name = "0.0.0.0" if args.listen else None
         app.launch(server_name="0.0.0.0", server_port=args.port)
