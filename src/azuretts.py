@@ -5,6 +5,7 @@ import numpy as np
 from io import BytesIO
 from typing import List
 import wave
+import re
 
 import logging
 logger = logging.getLogger(__file__)
@@ -13,7 +14,7 @@ logger = logging.getLogger(__file__)
 class AzureTts:
     def __init__(self, api_key: str, api_region: str, voice_locale: str = "en-US"):
         self._speech_config: speechsdk.SpeechConfig = speechsdk.SpeechConfig(subscription=api_key, region=api_region)
-        
+        self._speech_config.set_speech_synthesis_output_format(speechsdk.SpeechSynthesisOutputFormat.Riff44100Hz16BitMonoPcm)
         self._synthesizer: speechsdk.SpeechSynthesizer = speechsdk.SpeechSynthesizer(
             speech_config=self._speech_config)
         self._activeVoice: speechsdk.speech.VoiceInfo = None
@@ -22,7 +23,7 @@ class AzureTts:
         self._activeStyle: str = None
         self._pitch: str = None
         self._rate: str = None
-        self.setVoice(self._voices[0].local_name)
+        self.setVoice(self.getVoices()[0])
 
     def setVoice(self, name: str):
         voiceMatches = [ voice for voice in self._voices if voice.local_name == name]
@@ -37,10 +38,9 @@ class AzureTts:
 
 
     def getStyles(self) -> List[str]:
+        styles = ["General"]
         if self._activeVoice:
-            styles = self._activeVoice.style_list.copy()
-        else:
-            styles = []
+            styles.extend( self._activeVoice.style_list )
         return styles
 
 
@@ -80,7 +80,7 @@ class AzureTts:
              xmlns="http://www.w3.org/2001/10/synthesis"
              xmlns:mstts="http://www.w3.org/2001/mstts"
              xml:lang="{self._locale}">
-                <voice name="{self._activeVoice.name}">
+                <voice name="{self._activeVoice.short_name}">
                     <prosody pitch="{pitch}" rate="{rate}">
                         <mstts:express-as style="{activeStyle}">
                              {text}
@@ -89,4 +89,7 @@ class AzureTts:
                 </voice>
             </speak>
         """
+        ssml = ssml.replace('\n', ' ')
+        whitespace_re = re.compile('[ \n]+([ \n])')
+        ssml = whitespace_re.sub(' ', ssml)
         return ssml

@@ -36,13 +36,15 @@ class WebUI:
                     clear_btn = gr.Button("Clear")
             with gr.Row():
                 self._uiSpeakText = gr.Textbox()
+            with gr.Row():
                 self._uiAudio = gr.Audio(elem_id="audioplayer", interactive=False)
                 self._uiDummyObj = gr.Textbox(visible=False)
             with gr.Row():
                 voiceList = self._tts.getVoices()
-                self._uiAutoPlay = gr.Checkbox(label="Speak Responses", value=True)
+                styleList = self._tts.getStyles()
+                self._uiAutoPlay = gr.Checkbox(label="Speak Responses", value=False)
                 self._uiVoicesList = gr.Dropdown(label="Voices", multiselect=False, choices=voiceList, value=voiceList[0])
-                self._uiStylesList = gr.Dropdown(label="Styles", multiselect=False)
+                self._uiStylesList = gr.Dropdown(label="Styles", multiselect=False, choices=styleList, value=styleList[0])
                 self._pitchText = gr.Textbox(label="Pitch")
                 self._rateText = gr.Textbox(label="Rate")
 
@@ -60,6 +62,9 @@ class WebUI:
         self._pitchText.change(lambda x: self._tts.setPitch(x), inputs=[self._pitchText])
         self._rateText.change(lambda x: self._tts.setRate(x), inputs=[self._rateText])
         clear_btn.click(lambda: self._chat.clear(), inputs=[], outputs=[] )
+
+        self._uiAudio.play(lambda: logger.info("Play"))
+        self._uiAudio.stop(lambda: logger.info("Stop"))
 
     def handleDummyChange(self, *args, **kwargs):
         audio, dummy = args
