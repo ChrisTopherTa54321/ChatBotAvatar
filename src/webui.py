@@ -18,6 +18,8 @@ class WebUI:
         self._uiAudio: gr.Audio = None
         self._uiAutoPlay: gr.Checkbox = None
         self._uiDummyObj: gr.Textbox = None
+        self._uiVoicesList: gr.Dropdown = None
+        self._uiStylesList: gr.Dropdown = None
 
     def buildInterface(self):
         with gr.Blocks(analytics_enabled=False) as interface:
@@ -28,11 +30,15 @@ class WebUI:
                     txt = gr.Textbox(show_label=False, placeholder="Enter text and press enter").style(container=False)
                 with gr.Column(scale=1):
                     submit_btn = gr.Button("Submit")
-                    self._uiAutoPlay = gr.Checkbox(label="Speak Responses", value=True)
             with gr.Row():
                 self._uiSpeakText = gr.Textbox()
                 self._uiAudio = gr.Audio(elem_id="audioplayer", interactive=False)
                 self._uiDummyObj = gr.Textbox(visible=False)
+            with gr.Row():
+                voiceList = self._tts.getVoices()
+                self._uiAutoPlay = gr.Checkbox(label="Speak Responses", value=True)
+                self._uiVoicesList = gr.Dropdown(label="Voices", multiselect=False, choices=voiceList, value=voiceList[0])
+                self._uiStylesList = gr.Dropdown(label="Styles", multiselect=False)
 
         submit_inputs: List[gr.Component] = [txt]
         submit_outputs: List[Any] = [self._uiChatbot, self._uiSpeakText]
@@ -43,6 +49,8 @@ class WebUI:
         self._uiSpeakText.change(self.handleSpeakResponse, inputs=[
                                  self._uiSpeakText, self._uiAutoPlay], outputs=[self._uiDummyObj, self._uiAudio])
         self._uiDummyObj.change(self.handleDummyChange, _js="check_for_audio", inputs=[self._uiAudio, self._uiDummyObj], outputs=[self._uiDummyObj])
+        self._uiVoicesList.change(self.handleVoiceNameChange, inputs=[self._uiVoicesList], outputs=[self._uiStylesList])
+        self._uiStylesList.change(self.handleStyleChange, inputs=[self._uiStylesList])
 
     def handleDummyChange(self, *args, **kwargs):
         audio, dummy = args
@@ -51,6 +59,18 @@ class WebUI:
         else:
             logger.info("Audio not ready, retrying")
             return WebUI.triggerChangeEvent(),
+
+
+    def handleVoiceNameChange(self, *args, **kwargs):
+        voiceName, = args
+        self._tts.setVoice(voiceName)
+        styles = self._tts.getStyles()
+        return gr.Dropdown.update(choices=styles, interactive=True, value=styles[0])
+
+    def handleStyleChange(self, *args, **kwargs) -> List:
+        styleName, = args
+        self._tts.setStyle(styleName)
+        return []
 
     def submitText(self, *args, **kwargs) -> Tuple[Tuple[str, str], str]:
         inputText, = args
