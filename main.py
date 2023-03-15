@@ -50,7 +50,7 @@ if __name__ == "__main__":
         TextUtils.settings.data_dir = args.data_dir
         chatGpt = ChatGpt(api_key=args.openai_api_key)
         azureTts = AzureTts(api_key=args.azure_api_key, api_region=args.azure_api_region)
-        ui = WebUI(chatInterface=chatGpt, ttsInterface=azureTts, args=args)
+        ui = WebUI(chatInterface=chatGpt, ttsInterface=azureTts)
         ui.buildInterface()
         ui.injectScripts(scripts)
         server_name = "0.0.0.0" if args.listen else None
