@@ -19,8 +19,8 @@ function audio_player_dom_changed(dom_changes, observer) {
                 console.log("Dom change, audio found, play!");
                 stop_listen_for_audio_component_updates();
                 audio_player = get_audio_player();
-                audio_player.addEventListener('ended', audio_player_done_playing);
-                audio_player.play()
+                audio_player?.addEventListener('ended', audio_player_done_playing);
+                audio_player?.play()
             }
         });
     });
@@ -33,6 +33,7 @@ function audio_player_done_playing() {
 
 function trigger_audio_update(...theArgs) {
     console.log("Trigger audio update!");
+    start_listen_for_audio_component_updates()
     get_audio_trigger_checkbox().click();
 }
 

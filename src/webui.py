@@ -33,6 +33,7 @@ class WebUI:
         self._uiAudioTriggerRelay: gr.Checkbox = None
         self._uiAudioPollBtn: gr.Button = None
         self._uiAudioPlayer: gr.Audio = None
+        self._uiFullAudioPlayer: gr.Audio = None
 
     def buildInterface(self):
         with gr.Blocks(analytics_enabled=False) as app:
@@ -70,6 +71,7 @@ class WebUI:
                                                     elem_id="audio_trigger_relay", value=False)
             self._uiAudioPollBtn = gr.Button("Poll For Audio", elem_id="audio_poll_btn")
             self._uiAudioPlayer = gr.Audio(elem_id="tts_streaming_audio_player")
+            self._uiFullAudioPlayer = gr.Audio(label="Final Audio")
 
         # Connect the interface components
         submit_inputs: List[gr.Component] = [self._uiState, txt]
@@ -96,8 +98,9 @@ class WebUI:
         # has the Relay set as its output. If the Poll Button changes the Relay state then the audio player will trigger,
         # otherwise if the Relay state is unchanged then the audio player will not trigger. So Poll Button can trigger
         # the Audio Player withot it being a direct output
+        self._uiAudioTriggerRelay.change(fn=self._clear_component, inputs=[], outputs=[self._uiAudioPlayer])
         self._uiAudioTriggerRelay.change(fn=self._handleAudioRelayTriggered, inputs=[
-            self._uiState], outputs=[self._uiAudioPlayer])
+            self._uiState], outputs=[self._uiAudioPlayer, self._uiFullAudioPlayer])
 
     def _clear_component(self, *args, **kwargs):
         logger.info("Clearing component")
@@ -119,14 +122,14 @@ class WebUI:
         # Get any new audio since the last call
         audio_buffer, sampling_rate = self._tts_queue.get_new_audio()
         if len(audio_buffer > 0):
-            return (sampling_rate, audio_buffer)
+            return (sampling_rate, audio_buffer), None
 
         # No new audio, maybe all audio is done?
         if self._tts_queue.is_done():
             logger.info("TTS queue is done! Return full audio clip")
-            audio_buffer, smapling_rate = self._tts_queue.get_all_audio()
+            audio_buffer, sampling_rate = self._tts_queue.get_all_audio()
             if len(audio_buffer) > 0:
-                return (sampling_rate, audio_buffer)
+                return None, (sampling_rate, audio_buffer)
 
         logger.warning("HandleRelayTrigger called but no audio found!")
         return None
