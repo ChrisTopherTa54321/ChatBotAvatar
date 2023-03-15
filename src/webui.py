@@ -17,6 +17,7 @@ class WebUI:
         self._uiSpeakText: gr.Textbox = None
         self._uiAudio: gr.Audio = None
         self._uiAutoPlay: gr.Checkbox = None
+        self._uiDummyObj: gr.Textbox = None
 
     def buildInterface(self):
         with gr.Blocks(analytics_enabled=False) as interface:
@@ -31,6 +32,7 @@ class WebUI:
             with gr.Row():
                 self._uiSpeakText = gr.Textbox()
                 self._uiAudio = gr.Audio(elem_id="audioplayer", interactive=False)
+                self._uiDummyObj = gr.Textbox(visible=False)
 
         submit_inputs: List[gr.Component] = [txt]
         submit_outputs: List[Any] = [self._uiChatbot, self._uiSpeakText]
@@ -39,7 +41,16 @@ class WebUI:
         submit_btn.click(self.submitText, inputs=submit_inputs, outputs=submit_outputs)
 
         self._uiSpeakText.change(self.handleSpeakResponse, inputs=[
-                                 self._uiSpeakText, self._uiAutoPlay], outputs=[self._uiAudio])
+                                 self._uiSpeakText, self._uiAutoPlay], outputs=[self._uiDummyObj, self._uiAudio])
+        self._uiDummyObj.change(self.handleDummyChange, _js="check_for_audio", inputs=[self._uiAudio, self._uiDummyObj], outputs=[self._uiDummyObj])
+
+    def handleDummyChange(self, *args, **kwargs):
+        audio, dummy = args
+        if audio:
+            return dummy
+        else:
+            logger.info("Audio not ready, retrying")
+            return WebUI.triggerChangeEvent(),
 
     def submitText(self, *args, **kwargs) -> Tuple[Tuple[str, str], str]:
         inputText, = args
@@ -51,7 +62,7 @@ class WebUI:
         if not speak_response:
             return [None, None]
         audio_data, sample_rate = self._tts.synthesize(response_text)
-        return (sample_rate, audio_data)
+        return WebUI.triggerChangeEvent(), (sample_rate, audio_data)
 
     # Taken from AUTOMATIC1111 stable-diffusion-webui
 

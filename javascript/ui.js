@@ -5,13 +5,11 @@ function set_theme(theme) {
     }
 }
 
-function check_for_audio() {
-    audio_player = gradioApp().getElementById('audioplayer');
-    audio_player.click()
-}
-
-function play_audio_file() {
-    audio_player = gradioApp().getElementById('audioplayer');
+function check_for_audio(audio_data) {
+    audio_player = gradioApp()?.getElementById('audioplayer')?.getElementsByTagName("AUDIO");
+    if( audio_player && audio_player.length > 0 ) {
+        audio_player[0].play()
+    }
 }
 
 function gradioApp() {
