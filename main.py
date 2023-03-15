@@ -7,7 +7,8 @@ import time
 
 #fmt: off
 import sys
-sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), "src"))
+script_dir = pathlib.Path(__file__).parent.resolve()
+sys.path.append(os.path.join(script_dir, "src"))
 
 from chat import Chat
 from tts import Tts
@@ -18,8 +19,6 @@ from utils.text_utils import TextUtils
 
 logging.basicConfig(stream=sys.stdout)
 logger = logging.getLogger(__file__)
-
-script_dir = pathlib.Path(__file__).parent.resolve()
 
 
 def parseArgs():

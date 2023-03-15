@@ -2,7 +2,7 @@
 import os
 import openai
 import re
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 from typing_extensions import override
 import logging
 from dataclasses import dataclass

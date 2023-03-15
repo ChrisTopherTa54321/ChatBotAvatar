@@ -29,7 +29,7 @@ class TtsQueue:
         data: np.array
         sample_rate: int
 
-    def __init__(self, tts: Tts, chunk_min_words: int = 32):
+    def __init__(self, tts: Tts, chunk_min_words: int = 128):
         # TODO: adjust min_words on the fly based on processing rate
         self._tts: Tts = tts
         self._min_chunk_words: int = chunk_min_words
