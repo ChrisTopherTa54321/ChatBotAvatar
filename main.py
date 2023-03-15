@@ -44,6 +44,8 @@ def parseArgs():
     parser.add_argument("--jobs", help="Max concurrent Gradio jobs", default=3)
     parser.add_argument("--chat-backend", choices=["chatgpt"], default="chatgpt")
     parser.add_argument("--coqui-use-gpu", help="Use GPU for coqui TTS", action="store_true", default=False)
+    parser.add_argument("--chat-instructions", help="Initial directions to give Chat backend",
+                        default="You are an AI-driven chatbot")
 
     return parser.parse_args()
 
@@ -66,7 +68,7 @@ if __name__ == "__main__":
     # Select Chat backend
     if args.chat_backend == "chatgpt":
         from chat_backends.chatgpt import ChatGpt
-        chat = ChatGpt(api_key=args.openai_api_key)
+        chat = ChatGpt(api_key=args.openai_api_key, initial_instructions=args.chat_instructions)
     else:
         raise Exception(f"Unsupported chat backend: {args.chat_backend}")
 
