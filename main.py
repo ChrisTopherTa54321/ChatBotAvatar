@@ -14,6 +14,7 @@ from chat import Chat
 from tts import Tts
 from ui import Ui
 
+from avatar.manager import Manager
 from utils.text_utils import TextUtils
 #fmt: on
 
@@ -38,6 +39,7 @@ def parseArgs():
     parser.add_argument("--azure-api-region", help="Azure API Region",
                         default=os.getenv("AZURE_API_REGION", "centralus"))
     parser.add_argument("--data-dir", help="Data directory",  default="models")
+    parser.add_argument("--avatar-dir", help="Avatar directory",  default="avatar")
     parser.add_argument("--tts-backend", choices=["pyttsx3", "azure", "coqui"], default="pyttsx3")
     parser.add_argument("--ui-backend", choices=["gradio"], default="gradio")
     parser.add_argument("--jobs", help="Max concurrent Gradio jobs", default=3)
@@ -63,6 +65,7 @@ if __name__ == "__main__":
     chat: Chat = None
     ui: Ui = None
     tts: Tts = None
+    avatar_manager: Manager = Manager(avatar_dir=args.avatar_dir)
 
     # Select Chat backend
     if args.chat_backend == "chatgpt":
@@ -87,7 +90,7 @@ if __name__ == "__main__":
     # Select UI backend
     if args.ui_backend == "gradio":
         from ui_backends.gradio_ui import GradioUi
-        ui = GradioUi(chat_interface=chat, tts_interface=tts, jobs=args.jobs)
+        ui = GradioUi(chat_interface=chat, tts_interface=tts, avatar_manager=avatar_manager, jobs=args.jobs)
     else:
         raise Exception(f"Unsupported UI backend: {args.ui_backend}")
 
