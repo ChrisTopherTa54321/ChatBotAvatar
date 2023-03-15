@@ -18,9 +18,17 @@ class ChatGpt:
         self._history: List[str] = []
         self._history.append({"role": "system", "content": role})
 
+    def clear(self):
+        self._history.clear()
+
     def sendText(self, text: str):
-        self._history.append({"role": "user", "content": text})
-        completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=self._history, max_tokens=128)
+        if text.startswith("system:"):
+            role = "system"
+            text = text.replace("system:", "", 1)
+        else:
+            role = "user"
+        self._history.append({"role": role, "content": text})
+        completion = openai.ChatCompletion.create(model=self._model, messages=self._history)
         response = completion.choices[0].message.content
         response = self.preProc(response)
         self._history.append({"role": "assistant", "content": response})

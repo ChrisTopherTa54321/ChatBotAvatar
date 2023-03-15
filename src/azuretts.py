@@ -20,6 +20,8 @@ class AzureTts:
         self._locale = voice_locale
         self._voices = self._synthesizer.get_voices_async(locale=voice_locale).get().voices
         self._activeStyle: str = None
+        self._pitch: str = None
+        self._rate: str = None
         self.setVoice(self._voices[0].local_name)
 
     def setVoice(self, name: str):
@@ -49,13 +51,18 @@ class AzureTts:
         else:
             raise Exception("Failed to set style to {style}")
         
+    def setPitch(self, pitch: str):
+        self._pitch = pitch
+
+    def setRate(self, rate: str):
+        self._rate = rate
 
     def synthesize(self, text: str) -> tuple[np.array, int]:
         text = self._buildSsml(text)
         result = self._synthesizer.speak_ssml_async(text).get()
         if not result.audio_data:
             logger.warn(f"Failed to synthesize audio: {result.cancellation_details.error_details}")
-            return np.array(), 0
+            return np.array([]), 0
         resultData: BytesIO = BytesIO(result.audio_data)
         waveFile = wave.open(resultData)
         waveData: bytes = waveFile.readframes(waveFile.getnframes())
@@ -66,15 +73,19 @@ class AzureTts:
 
     def _buildSsml(self, text: str) -> str:
         activeStyle = self._activeStyle if self._activeStyle else "neutral"
+        pitch = self._pitch if self._pitch else "+0%"
+        rate = self._rate if self._rate else "+0%"
         ssml: str = f"""
             <speak version="1.0"
              xmlns="http://www.w3.org/2001/10/synthesis"
              xmlns:mstts="http://www.w3.org/2001/mstts"
              xml:lang="{self._locale}">
                 <voice name="{self._activeVoice.name}">
-                    <mstts:express-as style="{activeStyle}">
-                        {text}
-                    </mstts:express-as>
+                    <prosody pitch="{pitch}" rate="{rate}">
+                        <mstts:express-as style="{activeStyle}">
+                             {text}
+                        </mstts:express-as>
+                    </prosody>
                 </voice>
             </speak>
         """

@@ -20,6 +20,9 @@ class WebUI:
         self._uiDummyObj: gr.Textbox = None
         self._uiVoicesList: gr.Dropdown = None
         self._uiStylesList: gr.Dropdown = None
+        self._pitchText: gr.Textbox = None
+        self._rateText: gr.Textbox = None
+        self._clearButton: gr.Button = None
 
     def buildInterface(self):
         with gr.Blocks(analytics_enabled=False) as interface:
@@ -30,6 +33,7 @@ class WebUI:
                     txt = gr.Textbox(show_label=False, placeholder="Enter text and press enter").style(container=False)
                 with gr.Column(scale=1):
                     submit_btn = gr.Button("Submit")
+                    clear_btn = gr.Button("Clear")
             with gr.Row():
                 self._uiSpeakText = gr.Textbox()
                 self._uiAudio = gr.Audio(elem_id="audioplayer", interactive=False)
@@ -39,6 +43,8 @@ class WebUI:
                 self._uiAutoPlay = gr.Checkbox(label="Speak Responses", value=True)
                 self._uiVoicesList = gr.Dropdown(label="Voices", multiselect=False, choices=voiceList, value=voiceList[0])
                 self._uiStylesList = gr.Dropdown(label="Styles", multiselect=False)
+                self._pitchText = gr.Textbox(label="Pitch")
+                self._rateText = gr.Textbox(label="Rate")
 
         submit_inputs: List[gr.Component] = [txt]
         submit_outputs: List[Any] = [self._uiChatbot, self._uiSpeakText]
@@ -51,6 +57,9 @@ class WebUI:
         self._uiDummyObj.change(self.handleDummyChange, _js="check_for_audio", inputs=[self._uiAudio, self._uiDummyObj], outputs=[self._uiDummyObj])
         self._uiVoicesList.change(self.handleVoiceNameChange, inputs=[self._uiVoicesList], outputs=[self._uiStylesList])
         self._uiStylesList.change(self.handleStyleChange, inputs=[self._uiStylesList])
+        self._pitchText.change(lambda x: self._tts.setPitch(x), inputs=[self._pitchText])
+        self._rateText.change(lambda x: self._tts.setRate(x), inputs=[self._rateText])
+        clear_btn.click(lambda: self._chat.clear(), inputs=[], outputs=[] )
 
     def handleDummyChange(self, *args, **kwargs):
         audio, dummy = args
