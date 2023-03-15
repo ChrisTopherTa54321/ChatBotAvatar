@@ -8,7 +8,7 @@ import logging
 from dataclasses import dataclass
 
 from .chat import Chat
-from .textutils import TextUtils
+from .text_utils import TextUtils
 logger = logging.getLogger(__file__)
 
 

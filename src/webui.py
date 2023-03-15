@@ -16,8 +16,9 @@ class WebUI:
         self._uiChatbot: gr.Chatbot = None
         self._uiState: gr.State = None
         self._uiSpeakText: gr.Textbox = None
+        self._uiSpeakBtn: gr.Button = None
         self._uiAudio: gr.Audio = None
-        self._uiAutoPlay: gr.Checkbox = None
+        # self._uiAutoPlay: gr.Checkbox = None
         self._uiDummyObj: gr.Textbox = None
         self._uiVoicesList: gr.Dropdown = None
         self._uiStylesList: gr.Dropdown = None
@@ -30,21 +31,23 @@ class WebUI:
             self._uiChatbot = gr.Chatbot()
             self._uiState = gr.State([])
             with gr.Row():
-                with gr.Column(scale=4):
+                with gr.Column(scale=3):
                     txt = gr.Textbox(show_label=False, placeholder="Enter text and press enter").style(container=False)
                 with gr.Column(scale=1):
-                    submit_btn = gr.Button("Submit")
-                    clear_btn = gr.Button("Clear")
+                    with gr.Row():
+                        submit_btn = gr.Button("Submit")
+                        clear_btn = gr.Button("Clear")
             with gr.Row():
                 self._uiSpeakText = gr.Textbox()
             with gr.Row():
                 self._uiAudio = gr.Audio(elem_id="audioplayer", interactive=False)
                 self._uiDummyObj = gr.Textbox(visible=False)
             with gr.Row():
+                self._uiSpeakBtn = gr.Button("Speak")
                 voiceList = self._tts.get_voice_list()
                 voiceNameList = [voice.get_name() for voice in voiceList]
                 styleList = voiceList[0].get_styles_available() if len(voiceList) > 0 else []
-                self._uiAutoPlay = gr.Checkbox(label="Speak Responses", value=False)
+                # self._uiAutoPlay = gr.Checkbox(label="Speak Responses", value=False)
                 self._uiVoicesList = gr.Dropdown(label="Voices", multiselect=False,
                                                  choices=voiceNameList, value=voiceNameList[0])
                 self._uiStylesList = gr.Dropdown(label="Styles", multiselect=False,
@@ -58,10 +61,11 @@ class WebUI:
         txt.submit(self.submitText, inputs=submit_inputs, outputs=submit_outputs)
         submit_btn.click(self.submitText, inputs=submit_inputs, outputs=submit_outputs)
 
-        self._uiSpeakText.change(self.handleSpeakResponse,
-                                 inputs=[self._uiSpeakText, self._uiVoicesList, self._uiStylesList,
-                                         self._uiPitchText, self._uiRateText, self._uiAutoPlay],
-                                 outputs=[self._uiDummyObj, self._uiAudio])
+        self._uiSpeakBtn.click(self.handleSpeakResponse,
+                               inputs=[self._uiSpeakText, self._uiVoicesList, self._uiStylesList,
+                                       self._uiPitchText, self._uiRateText],
+                               outputs=[self._uiDummyObj, self._uiAudio])
+
         self._uiDummyObj.change(self.handleDummyChange, _js="check_for_audio", inputs=[
                                 self._uiAudio, self._uiDummyObj], outputs=[self._uiDummyObj])
         self._uiVoicesList.change(self.handleVoiceNameChange, inputs=[self._uiVoicesList], outputs=[self._uiStylesList])
@@ -107,9 +111,7 @@ class WebUI:
         return chat_output, response
 
     def handleSpeakResponse(self, *args, **kwargs) -> Tuple[int, np.array]:
-        response_text, voice, style, pitch, rate, speak_response = args
-        if not speak_response:
-            return [None, None]
+        response_text, voice, style, pitch, rate = args
         voice = self._tts.get_voice(voice)
         voice.set_style(style)
         if pitch:
@@ -141,7 +143,3 @@ class WebUI:
     @ classmethod
     def triggerChangeEvent(cls) -> str:
         return uuid.uuid4().hex
-
-
-if __name__ == "__main__":
-    demo.launch()

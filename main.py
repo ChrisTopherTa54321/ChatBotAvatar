@@ -7,10 +7,10 @@ import gradio as gr
 import pathlib
 import glob
 
-from src.textutils import TextUtils
+from src.text_utils import TextUtils
 from src.webui import WebUI
 from src.chatgpt import ChatGpt
-from src.azuretts import AzureTts
+from src.azure_tts import AzureTts
 
 logging.basicConfig(stream=sys.stdout)
 logger = logging.getLogger(__file__)
@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
     scripts = glob.glob(os.path.join(script_dir, "javascript", "*.js"))
 
-    with gr.Blocks() as app:
+    with gr.Blocks(analytics_enabled=False) as app:
         TextUtils.settings.data_dir = args.data_dir
         chatGpt = ChatGpt(api_key=args.openai_api_key)
         azureTts = AzureTts(api_key=args.azure_api_key, api_region=args.azure_api_region)
