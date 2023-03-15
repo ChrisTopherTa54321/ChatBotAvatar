@@ -10,8 +10,6 @@ import time
 from src.text_utils import TextUtils
 from src.webui import WebUI
 from src.chatgpt import ChatGpt
-from src.azure_tts import AzureTts
-from src.pyttsx3_tts import Pyttsx3Tts
 
 logging.basicConfig(stream=sys.stdout)
 logger = logging.getLogger(__file__)
@@ -37,6 +35,8 @@ def parseArgs():
                         default=os.getenv("AZURE_API_REGION", "centralus"))
     parser.add_argument("--data-dir", help="Data directory",  default="models")
     parser.add_argument("--jobs", help="Max concurrent Gradio jobs", default=3)
+    parser.add_argument("--tts-backend", choices=["pyttsx3", "azure", "coqui"], default="pyttsx3")
+    parser.add_argument("--coqui-use-gpu", help="Use GPU for coqui TTS", action="store_true", default=False)
 
     return parser.parse_args()
 
@@ -54,9 +54,14 @@ if __name__ == "__main__":
 
     TextUtils.settings.data_dir = args.data_dir
     chatGpt = ChatGpt(api_key=args.openai_api_key)
-    if args.azure_api_key:
+    if args.tts_backend == "azure" and args.azure_api_key:
+        from src.azure_tts import AzureTts
         tts = AzureTts(api_key=args.azure_api_key, api_region=args.azure_api_region)
+    elif args.tts_backend == "coqui":
+        from src.coqui_tts import CoquiTts
+        tts = CoquiTts(use_gpu=args.coqui_use_gpu)
     else:
+        from src.pyttsx3_tts import Pyttsx3Tts
         tts = Pyttsx3Tts()
     ui = WebUI(chatInterface=chatGpt, ttsInterface=tts)
     ui.buildInterface()
