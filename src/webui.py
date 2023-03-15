@@ -66,10 +66,12 @@ class WebUI:
             self._uiPitchText = gr.Textbox(label="Pitch")
             self._uiRateText = gr.Textbox(label="Rate")
 
+        # Hidden helpers for audio chunking
         with gr.Group():
             self._uiAudioTriggerRelay = gr.Checkbox(label="Audio Trigger Relay",
-                                                    elem_id="audio_trigger_relay", value=False)
-            self._uiAudioPollBtn = gr.Button("Poll For Audio", elem_id="audio_poll_btn")
+                                                    elem_id="audio_trigger_relay", value=False, visible=False)
+            self._uiAudioPollBtn = gr.Button("Poll For Audio", elem_id="audio_poll_btn", visible=False)
+        with gr.Group():
             self._uiAudioPlayer = gr.Audio(elem_id="tts_streaming_audio_player")
             self._uiFullAudioPlayer = gr.Audio(label="Final Audio")
 
@@ -131,8 +133,14 @@ class WebUI:
             if len(audio_buffer) > 0:
                 return None, (sampling_rate, audio_buffer)
 
+        logger.warn("No audio available, waiting...")
+        if self._tts_queue.wait_for_new_audio(30):
+            audio_buffer, sampling_rate = self._tts_queue.get_new_audio()
+            if len(audio_buffer > 0):
+                return (sampling_rate, audio_buffer), None
+
         logger.warning("HandleRelayTrigger called but no audio found!")
-        return None
+        return None, None
 
     def _handleSpeakButton(self, *args, **kwargs) -> Tuple[int, np.array]:
         ''' Kicks off speech synthesis, blocks until first samples arrive '''
@@ -146,13 +154,10 @@ class WebUI:
             voice.set_rate(rate)
 
         self._tts_queue.start_synthesis(response_text, voice)
-        retries = 100
         logger.info("Waiting for first samples...")
-        while retries > 0 and not self._tts_queue.has_audio():
-            logger.info(f"Waiting for first sample... {retries}")
-            time.sleep(0.1)
-            retries -= 1
-        if retries > 0:
+        success = self._tts_queue.wait_for_audio(timeout=30)
+
+        if success:
             logger.info("First samples received! Triggering audio")
             return not relay_state
         logger.info("No samples received before timeout")
@@ -161,7 +166,7 @@ class WebUI:
     def _handleVoiceNameChange(self, *args, **kwargs):
         state, voiceName, = args
         voice = self._tts.get_voice(voiceName)
-        styles = voice.get_styles_available() if styles else [""]
+        styles = voice.get_styles_available()
         return gr.Dropdown.update(choices=styles, interactive=True, value=styles[0])
 
     def submitText(self, *args, **kwargs) -> Tuple[Tuple[str, str], str]:

@@ -29,7 +29,8 @@ class TtsQueue:
         data: np.array
         sample_rate: int
 
-    def __init__(self, tts: Tts, chunk_min_words: int = 16):
+    def __init__(self, tts: Tts, chunk_min_words: int = 32):
+        # TODO: adjust min_words on the fly based on processing rate
         self._tts: Tts = tts
         self._min_chunk_words: int = chunk_min_words
         self._audio: Dict[int, TtsQueue.AudioData] = {}
@@ -38,6 +39,7 @@ class TtsQueue:
         self._pool_result: AsyncResult = None
         self._pool_cancel_event: Event = Event()
         self._read_chunk_id: int = 0
+        self._new_audio_avail_event: Event = Event()
 
     def cancel(self):
         '''
@@ -125,9 +127,24 @@ class TtsQueue:
         self._pool_result = self._pool.map_async(func=partial(self._worker_func, (self._pool_cancel_event, voice)),
                                                  iterable=chunks, callback=self._result_ready)
 
-    def has_audio(self) -> bool:
-        ''' Checks if this queue has any generated audio '''
-        return len(self._audio) > 0
+    def wait_for_audio(self, timeout: float = None) -> bool:
+        ''' Checks for any audio, optionally blocking until audio is available'''
+        return len(self._audio) > 0 or self._new_audio_avail_event.wait(timeout)
+
+    def wait_for_new_audio(self, timeout: float = None) -> bool:
+        ''' Checks for unprocessed audio, optionally blocking until audio is available'''
+        end_time = time.time() + timeout if timeout else None
+        audio_ready = self._read_chunk_id in self._audio
+
+        while not audio_ready:
+            remaining_timeout = end_time - time.time() if end_time else None
+            signaled = self._new_audio_avail_event.wait(timeout=remaining_timeout)
+            if signaled:
+                audio_ready = self._read_chunk_id in self._audio
+            else:
+                break
+
+        return audio_ready
 
     def _worker_func(self, *args, **kwargs):
         '''
@@ -146,6 +163,7 @@ class TtsQueue:
             logger.error(f"Synthesize Error: {e}")
         self._audio[job_id] = TtsQueue.AudioData(
             text=job_text, data=audio_data, sample_rate=sample_rate)
+        self._new_audio_avail_event.set()
         logger.info(f"Done working on {job_id}")
 
     def _result_ready(self, *args, **kwargs):
