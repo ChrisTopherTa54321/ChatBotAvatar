@@ -30,7 +30,7 @@ class AzureTts(Tts):
         self._rate: str = None
 
         voices = self._synthesizer.get_voices_async(locale=voice_locale).get().voices
-        self._voices: List[AzureTts.AzureVoice] = [AzureTts.AzureVoice(voice_info=voice) for voice in voices]
+        self._voices: List[AzureTts.Voice] = [AzureTts.Voice(voice_info=voice) for voice in voices]
 
     @override
     def get_voice_list(self) -> List[Tts.Voice]:
@@ -44,7 +44,7 @@ class AzureTts(Tts):
         return None
 
     @override
-    def synthesize(self, text: str, voice: AzureTts.AzureVoice) -> Tuple[np.array, int]:
+    def synthesize(self, text: str, voice: AzureTts.Voice) -> Tuple[np.array, int]:
         ssml = voice._buildSsml(text)
         result = self._synthesizer.speak_ssml_async(ssml).get()
         if not result.audio_data:
@@ -57,7 +57,7 @@ class AzureTts(Tts):
 
         return np.frombuffer(waveData, dtype=np.int16), waveRate
 
-    class AzureVoice(Tts.Voice):
+    class Voice(Tts.Voice):
         def __init__(self, voice_info: speechsdk.VoiceInfo):
             self._voice_info: speechsdk.VoiceInfo = voice_info
             self._cur_style: str = voice_info.style_list[0] if voice_info.style_list else None
@@ -90,6 +90,10 @@ class AzureTts(Tts):
         @override
         def set_rate(self, rate: str) -> None:
             self._rate = rate
+
+        @override
+        def get_sampling_rate(self) -> int:
+            return 44100
 
         def _buildSsml(self, text: str) -> str:
             style = self._cur_style if self._cur_style else "neutral"

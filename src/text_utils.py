@@ -4,7 +4,7 @@ from typing import List, Callable, Tuple
 import nltk
 import os
 import re
-from nltk.tokenize import sent_tokenize
+from nltk.tokenize import sent_tokenize, word_tokenize
 from functools import partial
 
 
@@ -40,6 +40,20 @@ class TextUtils:
             List[str]: list of sentences extracted from input text
         '''
         split = cls._download_wrapper(partial(sent_tokenize, text))
+        return split
+
+    @classmethod
+    def split_words(cls, text: str) -> List[str]:
+        '''
+        splits text in to words
+
+        Args:
+            text (str): input text
+
+        Returns:
+            List[str]: list of words extracted from input text
+        '''
+        split = cls._download_wrapper(partial(word_tokenize, text))
         return split
 
     @classmethod

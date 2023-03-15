@@ -75,6 +75,15 @@ class Tts(abc.ABC):
             '''
             pass
 
+        @abstractmethod
+        def get_sampling_rate(self) -> int:
+            '''
+            Returns the sampling rate of the audio output by this voice
+
+            Returns:
+                int: audio sampling rate
+            '''
+
     @abstractmethod
     def get_voice_list(self) -> List[Tts.Voice]:
         '''
