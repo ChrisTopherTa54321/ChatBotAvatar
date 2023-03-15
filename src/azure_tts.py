@@ -15,6 +15,8 @@ logger = logging.getLogger(__file__)
 
 
 class AzureTts(Tts):
+    DEFAULT_STYLE = "general"
+
     def __init__(self, api_key: str, api_region: str, voice_locale: str = "en-US"):
         # Create configuration
         self._speech_config: speechsdk.SpeechConfig = speechsdk.SpeechConfig(subscription=api_key, region=api_region)
@@ -60,7 +62,7 @@ class AzureTts(Tts):
     class Voice(Tts.Voice):
         def __init__(self, voice_info: speechsdk.VoiceInfo):
             self._voice_info: speechsdk.VoiceInfo = voice_info
-            self._cur_style: str = voice_info.style_list[0] if voice_info.style_list else None
+            self._cur_style: str = self.get_styles_available()[0]
             self._pitch: str = None
             self._rate: str = None
 
@@ -70,7 +72,7 @@ class AzureTts(Tts):
 
         @override
         def get_styles_available(self) -> List[str]:
-            return self._voice_info.style_list.copy()
+            return [AzureTts.DEFAULT_STYLE] + self._voice_info.style_list
 
         @override
         def get_style(self) -> str:
@@ -78,7 +80,7 @@ class AzureTts(Tts):
 
         @override
         def set_style(self, style: str) -> None:
-            if style in self._voice_info.style_list:
+            if style in self.get_styles_available():
                 self._cur_style = style
             else:
                 logger.warn(f"Invalid style for voice [{self.get_name()}]: {style}")
@@ -96,9 +98,15 @@ class AzureTts(Tts):
             return 44100
 
         def _buildSsml(self, text: str) -> str:
-            style = self._cur_style if self._cur_style else "neutral"
+            style = self._cur_style if self._cur_style else AzureTts.DEFAULT_STYLE
             pitch = self._pitch if self._pitch else "+0%"
             rate = self._rate if self._rate else "+0%"
+            if style == AzureTts.DEFAULT_STYLE:
+                express_open = ""
+                express_close = ""
+            else:
+                express_open = f'<mstts:express-as style="{style}">'
+                express_close = '</mstts:express-as>'
             ssml: str = f"""
                 <speak version="1.0"
                 xmlns="http://www.w3.org/2001/10/synthesis"
@@ -106,9 +114,9 @@ class AzureTts(Tts):
                 xml:lang="{self._voice_info.locale}">
                     <voice name="{self._voice_info.short_name}">
                         <prosody pitch="{pitch}" rate="{rate}">
-                            <mstts:express-as style="{style}">
+                            {express_open}
                                 {text}
-                            </mstts:express-as>
+                            {express_close}
                         </prosody>
                     </voice>
                 </speak>
