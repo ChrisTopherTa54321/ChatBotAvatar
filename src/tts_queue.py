@@ -120,6 +120,7 @@ class TtsQueue:
                 chunks.append((chunk_id, chunk))
                 chunk = ""
                 chunk_id += 1
+                word_cnt = 0
         if chunk:
             chunks.append((chunk_id, chunk))
 
@@ -155,6 +156,7 @@ class TtsQueue:
             return None
 
         logger.info(f"Start work on {job_id}, {job_text}")
+        start = time.time()
         try:
             audio_data, sample_rate = self._tts.synthesize(text=job_text, voice=voice)
         except Exception as e:
@@ -164,7 +166,8 @@ class TtsQueue:
         self._audio[job_id] = TtsQueue.AudioData(
             text=job_text, data=audio_data, sample_rate=sample_rate)
         self._new_audio_avail_event.set()
-        logger.info(f"Done working on {job_id}")
+        elapsed = time.time() - start
+        logger.info(f"Done working on {job_id}. Took {elapsed:.2f} to process {len(job_text)} characters ({len(job_text)/elapsed:.2f}cps)")
 
     def _result_ready(self, *args, **kwargs):
         '''
