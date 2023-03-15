@@ -69,9 +69,10 @@ class TextUtils:
             List[Tuple[str,str]]: list of (speaker, message) pairs
         '''
         ret: List[Tuple] = []
-        _speaker_pattern: re.Pattern = re.compile(r".*?([^\s]+):.*", flags=re.DOTALL)
+        _speaker_pattern: re.Pattern = re.compile(r".*?(?P<speaker>\n[^\s]+):.*", flags=re.DOTALL)
         cur_speaker = initial_speaker
         while text:
+            text = '\n' + text.strip(TextUtils._TRIM_CHARS) # Start with newline for regex matching of speaker
             matches = _speaker_pattern.match(text)
             if not matches:
                 # No match, remaining text is assigned to current speaker
@@ -82,6 +83,7 @@ class TextUtils:
                 if 0 == startPos:
                     cur_speaker = matches.group(1).lower()
                     text = text[len(cur_speaker):]
+                    cur_speaker = cur_speaker.strip(TextUtils._TRIM_CHARS)
                     # Text is currently at the speaker. Extract it and continue looping
                 else:
                     # Text up until startPos is assigned to current speaker
