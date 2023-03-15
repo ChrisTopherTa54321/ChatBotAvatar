@@ -127,8 +127,8 @@ class GradioUi(Ui):
         self._app.launch(server_name=server_name, server_port=port)
 
     def _handleClearClick(self, *args, **kwargs):
-        self._chat.clear()
-        return []
+        self._chat.reset()
+        return [(None,None)]
 
     def _handleAudioRelayTriggered(self, *args, **kwargs):
         ''' Relay a signal to load the AudioPlayer '''

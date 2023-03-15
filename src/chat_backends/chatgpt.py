@@ -49,12 +49,18 @@ class ChatGpt(Chat):
         self._history.append(role)
 
     @override
-    def send_text(self, text: str):
+    def send_text(self, text: str) -> str:
         message_list = TextUtils.split_speakers(text, initial_speaker=Chat.Roles.USER)
+        has_user = False
         for speaker, msg in message_list:
+            if speaker == Chat.Roles.USER:
+                has_user = True
             self._history.append(ChatGpt.HistoryItem(role=speaker, message=msg))
 
         converted_msgs = [item.asChatGpt() for item in self._history]
+
+        if not has_user:
+            return ""
 
         completion = openai.ChatCompletion.create(model=self._model, messages=converted_msgs)
 
