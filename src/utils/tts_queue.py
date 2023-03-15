@@ -2,8 +2,8 @@
 from __future__ import annotations
 from typing import Tuple, List, Dict
 import numpy as np
-from .tts import Tts
-from .text_utils import TextUtils
+from tts import Tts
+from utils.text_utils import TextUtils
 from dataclasses import dataclass
 
 from multiprocessing.dummy import Event
@@ -167,7 +167,8 @@ class TtsQueue:
             text=job_text, data=audio_data, sample_rate=sample_rate)
         self._new_audio_avail_event.set()
         elapsed = time.time() - start
-        logger.info(f"Done working on {job_id}. Took {elapsed:.2f} to process {len(job_text)} characters ({len(job_text)/elapsed:.2f}cps)")
+        logger.info(
+            f"Done working on {job_id}. Took {elapsed:.2f} to process {len(job_text)} characters ({len(job_text)/elapsed:.2f}cps)")
 
     def _result_ready(self, *args, **kwargs):
         '''

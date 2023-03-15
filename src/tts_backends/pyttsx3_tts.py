@@ -4,7 +4,7 @@ import pyttsx3
 import pyttsx3.voice
 import numpy as np
 from typing import List, Optional, Tuple
-from src.tts import Tts
+from tts import Tts
 from typing_extensions import override
 import tempfile
 import wave

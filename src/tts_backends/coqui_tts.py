@@ -3,7 +3,7 @@ from __future__ import annotations
 from TTS.api import TTS as cTTS
 import numpy as np
 from typing import List, Optional, Tuple
-from src.tts import Tts
+from tts import Tts
 from typing_extensions import override
 
 import logging

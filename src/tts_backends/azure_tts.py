@@ -7,7 +7,7 @@ from io import BytesIO
 from typing import List, Optional, Tuple
 import wave
 import re
-from src.tts import Tts
+from tts import Tts
 from typing_extensions import override
 
 import logging

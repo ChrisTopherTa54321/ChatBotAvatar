@@ -7,8 +7,8 @@ from typing_extensions import override
 import logging
 from dataclasses import dataclass
 
-from .chat import Chat
-from .text_utils import TextUtils
+from chat import Chat
+from utils.text_utils import TextUtils
 logger = logging.getLogger(__file__)
 
 
