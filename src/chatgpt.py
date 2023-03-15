@@ -27,17 +27,33 @@ class ChatGpt:
         self._history.append(role)
 
     def sendText(self, text: str):
-        if text.lower().startswith("system:"):
-            role = ChatGpt.ROLE_SYS
-            text = text[text.index(':')+1:]
-        elif text.lower().startswith("ai:"):
-            role = ChatGpt.ROLE_AI
-            text = text[text.index(':')+1:]
-        else:
-            role = ChatGpt.ROLE_USER
-        self._history.append({"role": role, "content": text})
+        roles = [ChatGpt.ROLE_SYS, ChatGpt.ROLE_AI, ChatGpt.ROLE_USER]
+        role = ChatGpt.ROLE_USER
+        do_send = False
+        orig_text = text
+        while text:
+            endPos = len(text)
+            for role_iter in roles:
+                pos = text.lower().find(f"{role_iter.lower()}:")
+                if pos == 0:
+                    role = role_iter
+                    text = text[len(role):].strip('\r\n :')
+                    endPos = -1
+                    break
+                elif pos > 0 and pos < endPos:
+                    endPos = pos
 
-        if role != ChatGpt.ROLE_USER:
+            if endPos == -1:
+                continue
+
+            message = text[:endPos].strip('\r\n :')
+            self._history.append({"role": role, "content": message})
+            if role == ChatGpt.ROLE_USER:
+                do_send = True
+
+            text = text[endPos:].strip()
+
+        if not do_send:
             return None
 
         completion = openai.ChatCompletion.create(model=self._model, messages=self._history)
@@ -56,11 +72,8 @@ class ChatGpt:
         for item in self._history:
             role: str = item["role"]
             message: str = item["content"]
-            if role == "user":
-                historyPairs.append((message, None))
-            elif role == "system":
-                historyPairs.append((f"SYSTEM: {message}", None))
+            if role == ChatGpt.ROLE_USER or role == ChatGpt.ROLE_SYS:
+                historyPairs.append((f"{role.upper()}: {message}", None))
             elif role == "assistant":
-                historyPairs.append((None, message))
-
+                historyPairs.append((None, f"{role.upper()}: {message}"))
         return historyPairs
