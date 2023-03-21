@@ -23,15 +23,12 @@ class AzureTts(Tts):
         self._speech_config.set_speech_synthesis_output_format(
             speechsdk.SpeechSynthesisOutputFormat.Riff44100Hz16BitMonoPcm)
 
-        # Create synthesizer using configuration
-        self._synthesizer: speechsdk.SpeechSynthesizer = speechsdk.SpeechSynthesizer(
-            speech_config=self._speech_config)
-
-        self._locale = voice_locale
+        self._locale: str = voice_locale
         self._pitch: str = None
         self._rate: str = None
 
-        voices = self._synthesizer.get_voices_async(locale=voice_locale).get().voices
+        synthesizer = self._get_synthesizer()
+        voices = synthesizer.get_voices_async(locale=voice_locale).get().voices
         self._voices: List[AzureTts.Voice] = [AzureTts.Voice(voice_info=voice) for voice in voices]
 
     @override
@@ -48,7 +45,8 @@ class AzureTts(Tts):
     @override
     def synthesize(self, text: str, voice: AzureTts.Voice) -> Tuple[np.array, int]:
         ssml = voice._buildSsml(text)
-        result = self._synthesizer.speak_ssml_async(ssml).get()
+        synthesizer: speechsdk.SpeechSynthesizer = self._get_synthesizer()
+        result = synthesizer.speak_ssml_async(ssml).get()
         if not result.audio_data:
             logger.warn(f"Failed to synthesize audio: {result.cancellation_details.error_details}")
             return np.array([]), 0
@@ -58,6 +56,15 @@ class AzureTts(Tts):
         waveRate: int = waveFile.getframerate()
 
         return np.frombuffer(waveData, dtype=np.int16), waveRate
+
+    def _get_synthesizer(self) -> speechsdk.SpeechSynthesizer:
+        '''
+        Create a SpeechSynthesizer with the current configuration
+
+        Returns:
+            speechsdk.SpeechSynthesizer: new speechsdk.SpeechSynthesizer
+        '''
+        return speechsdk.SpeechSynthesizer(speech_config=self._speech_config)
 
     class Voice(Tts.Voice):
         def __init__(self, voice_info: speechsdk.VoiceInfo):
