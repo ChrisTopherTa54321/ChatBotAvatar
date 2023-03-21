@@ -138,8 +138,13 @@ class ChatTab(GradioTab):
         logger.warn("No audio available, waiting...")
         if self._tts_queue.wait_for_new_audio(30):
             audio_buffer, sampling_rate = self._tts_queue.get_new_audio()
+            if self._tts_queue.is_done():
+                all_audio_buffer, all_audio_sampling_rate = self._tts_queue.get_all_audio()
+                all_audio = (all_audio_sampling_rate, all_audio_buffer)
+            else:
+                all_audio = None
             if len(audio_buffer > 0):
-                return (sampling_rate, audio_buffer), None
+                return (sampling_rate, audio_buffer), all_audio
 
         logger.warning("HandleRelayTrigger called but no audio found!")
         return None, None

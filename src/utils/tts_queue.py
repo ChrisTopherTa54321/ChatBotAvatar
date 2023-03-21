@@ -1,17 +1,21 @@
 ''' Class for handling chunking TTS requests '''
 from __future__ import annotations
-from typing import Tuple, List, Dict
+
+import logging
+import time
+from dataclasses import dataclass
+from functools import partial
+from multiprocessing.dummy import Event, Queue, Lock
+from multiprocessing.pool import AsyncResult, ThreadPool
+from queue import Empty
+from typing import Dict, List, Tuple
+import traceback
+
 import numpy as np
+
 from tts import Tts
 from utils.text_utils import TextUtils
-from dataclasses import dataclass
 
-from multiprocessing.dummy import Event
-from multiprocessing.pool import ThreadPool, AsyncResult
-from queue import Empty
-from functools import partial
-import time
-import logging
 logger = logging.getLogger(__file__)
 
 
@@ -24,21 +28,49 @@ class TtsQueue:
         text: str
 
     @dataclass
+    class WorkerParams:
+        cancel_event: Event
+        workq: Queue
+        lock: Lock
+        voice: str
+
+    @dataclass
+    class WorkQueueItem:
+        text: str
+
+    @dataclass
     class AudioData:
         text: str
         data: np.array
         sample_rate: int
 
-    def __init__(self, tts: Tts, chunk_min_words: int = 128):
-        # TODO: adjust min_words on the fly based on processing rate
+    def __init__(self, tts: Tts, chunk_word_cnt: int = 256, grow_chunks: bool = True, jobs: int = 4):
+        '''
+        Initialize a TtsQueue
+
+        Args:
+            tts (Tts): tts interface to manage
+            chunk_word_cnt (int, optional): target chunk size (number of words to send to TTS at once)
+            grow_chunks (bool, optional): if True, start with a very small chunk size and grow it up to chunk_word_cnt. This gets early audio out quicker
+            jobs (int, optional): number of chunks to generate at a time
+        '''
         self._tts: Tts = tts
-        self._min_chunk_words: int = chunk_min_words
+        self._min_chunk_words: int = chunk_word_cnt
+        self._cur_chunk_words: int = chunk_word_cnt
+
+        if grow_chunks:
+            self._cur_chunk_words = 1
+
         self._audio: Dict[int, TtsQueue.AudioData] = {}
         self._sampling_rate: int = 0
-        self._pool: ThreadPool = ThreadPool(processes=1)
+        self._pool: ThreadPool = ThreadPool(processes=jobs)
+        self._jobs_cnt: int = jobs
+        self._workq_lock: Lock = Lock()
+        self._workq: Queue = Queue()
         self._pool_result: AsyncResult = None
         self._pool_cancel_event: Event = Event()
         self._read_chunk_id: int = 0
+        self._worker_chunk_id: int = 0
         self._new_audio_avail_event: Event = Event()
 
     def cancel(self):
@@ -107,26 +139,18 @@ class TtsQueue:
 
         self.reset()
 
-        sentences = TextUtils.split_sentences(text)
-        chunk: str = ""
-        chunks: List[Tuple[int, str]] = []
-        word_cnt = 0
-        chunk_id = 0
+        # Assemble the sentences into a list and prepare the work queue
+        sentences: List[str] = TextUtils.split_sentences(text)
         for sentence in sentences:
-            words = TextUtils.split_words(sentence)
-            word_cnt += len(words)
-            chunk += sentence + " "
-            if word_cnt >= self._min_chunk_words:
-                chunks.append((chunk_id, chunk))
-                chunk = ""
-                chunk_id += 1
-                word_cnt = 0
-        if chunk:
-            chunks.append((chunk_id, chunk))
+            self._workq.put(TtsQueue.WorkQueueItem(text=sentence))
+        self._worker_chunk_id = 0
+        worker_ids: List[int] = list(range(1, self._jobs_cnt+1))
 
         self._sampling_rate = voice.get_sampling_rate()
-        self._pool_result = self._pool.map_async(func=partial(self._worker_func, (self._pool_cancel_event, voice)),
-                                                 iterable=chunks, callback=self._result_ready)
+        params: TtsQueue.WorkerParams = TtsQueue.WorkerParams(
+            cancel_event=self._pool_cancel_event, workq=self._workq, lock=self._workq_lock, voice=voice)
+        self._pool_result = self._pool.map_async(func=partial(
+            self._worker_func, params), iterable=worker_ids, callback=self._result_ready)
 
     def wait_for_audio(self, timeout: float = None) -> bool:
         ''' Checks for any audio, optionally blocking until audio is available'''
@@ -141,34 +165,63 @@ class TtsQueue:
             remaining_timeout = end_time - time.time() if end_time else None
             signaled = self._new_audio_avail_event.wait(timeout=remaining_timeout)
             if signaled:
+                self._new_audio_avail_event.clear()
                 audio_ready = self._read_chunk_id in self._audio
             else:
                 break
 
         return audio_ready
 
-    def _worker_func(self, *args, **kwargs):
+    def _get_chunk_id(self):
+        ''' Returns the next chunk id '''
+        chunk_id = self._worker_chunk_id
+        self._worker_chunk_id += 1
+        return chunk_id
+
+    def _worker_func(self, params: TtsQueue.WorkerParams, worker_id: int):
         '''
         Background worker function to generate chunks of TTS audio
         '''
-        (cancel_event, voice), (job_id, job_text) = args
-        if cancel_event.is_set():
-            return None
+        logger.info(f"Worker {worker_id} starting up")
+        done: bool = False
 
-        logger.info(f"Start work on {job_id}, {job_text}")
-        start = time.time()
-        try:
-            audio_data, sample_rate = self._tts.synthesize(text=job_text, voice=voice)
-        except Exception as e:
-            import traceback
-            traceback.print_exception(e)
-            logger.error(f"Synthesize Error: {e}")
-        self._audio[job_id] = TtsQueue.AudioData(
-            text=job_text, data=audio_data, sample_rate=sample_rate)
-        self._new_audio_avail_event.set()
-        elapsed = time.time() - start
-        logger.info(
-            f"Done working on {job_id}. Took {elapsed:.2f} to process {len(job_text)} characters ({len(job_text)/elapsed:.2f}cps)")
+        while not done and not params.cancel_event.is_set():
+
+            # Grab the lock so we can grab multiple consecutive chunks
+            with params.lock:
+                chunk_id: int = self._get_chunk_id()
+                text_to_speak: str = ""
+                word_cnt: int = 0
+                while (word_cnt < self._cur_chunk_words) and not done:
+                    try:
+                        work_item: TtsQueue.WorkQueueItem = params.workq.get(timeout=0.0)
+                        text_to_speak += f" {work_item.text}"
+                        word_cnt += len(TextUtils.split_words(work_item.text))
+                    except Empty as e:
+                        done = True
+                    except Exception as e:
+                        traceback.print_exception(e)
+                        logger.error(f"WorkQueue Error: {e}")
+
+                if self._cur_chunk_words < self._min_chunk_words:
+                    self._cur_chunk_words = min(5*self._cur_chunk_words, self._min_chunk_words)
+
+            if text_to_speak:
+                logger.info(f"Worker {worker_id} got work item: {text_to_speak}")
+                start = time.time()
+                try:
+                    audio_data, sample_rate = self._tts.synthesize(text=text_to_speak, voice=params.voice)
+                except Exception as e:
+                    traceback.print_exception(e)
+                    logger.error(f"Synthesize Error: {e}")
+                    audio_data, sample_rate = None, 0
+
+                self._audio[chunk_id] = TtsQueue.AudioData(text=text_to_speak, data=audio_data, sample_rate=sample_rate)
+                self._new_audio_avail_event.set()
+                elapsed = time.time() - start
+                logger.info(
+                    f"Done working on {chunk_id}. Took {elapsed:.2f} to process {len(text_to_speak)} characters ({len(text_to_speak)/elapsed:.2f}cps)")
+        logger.info(f"Worker {worker_id} exiting")
 
     def _result_ready(self, *args, **kwargs):
         '''
