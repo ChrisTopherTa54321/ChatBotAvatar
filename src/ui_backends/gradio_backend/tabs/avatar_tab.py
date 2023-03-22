@@ -1,6 +1,9 @@
 ''' Avatar interface tab '''
 import logging
 from typing import List, Tuple
+import uuid
+
+from utils.shared import Shared
 
 import gradio as gr
 from typing_extensions import override

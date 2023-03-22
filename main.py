@@ -16,39 +16,11 @@ from ui import Ui
 
 from avatar.manager import Manager
 from utils.text_utils import TextUtils
+from utils.shared import Shared
 #fmt: on
 
 logging.basicConfig(stream=sys.stdout)
 logger = logging.getLogger(__file__)
-
-
-def parseArgs():
-    parser = argparse.ArgumentParser(description="ChatBot",
-                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--verbose', '-v', help="Verbose", action='store_true', default=False)
-    parser.add_argument('--listen', help="Listen on public network interface", action='store_true', default=False)
-    parser.add_argument('--port', '-p', help="Port to listen on", type=int, default=5981)
-    parser.add_argument("--bind-retry-cnt",
-                        help="Number of times to retry if listening port busy, -1 for infinite", default=3)
-    parser.add_argument("--port-increment-cnt",
-                        help="Number of times to increment port if port still busy after bind-retry-cnt", default=5)
-    parser.add_argument("--openai-api-key", help="OpenAI API key", type=str,
-                        default=os.getenv("OPENAI_API_KEY", "No Key Set"))
-    parser.add_argument("--azure-api-key", help="Azure API key", type=str,
-                        default=os.getenv("AZURE_API_KEY", ""))
-    parser.add_argument("--azure-api-region", help="Azure API Region",
-                        default=os.getenv("AZURE_API_REGION", "centralus"))
-    parser.add_argument("--data-dir", help="Data directory",  default="models")
-    parser.add_argument("--avatar-dir", help="Avatar directory",  default="avatar")
-    parser.add_argument("--tts-backend", choices=["pyttsx3", "azure", "coqui"], default="pyttsx3")
-    parser.add_argument("--ui-backend", choices=["gradio"], default="gradio")
-    parser.add_argument("--jobs", help="Max concurrent Gradio jobs", default=3)
-    parser.add_argument("--chat-backend", choices=["chatgpt"], default="chatgpt")
-    parser.add_argument("--coqui-use-gpu", help="Use GPU for coqui TTS", action="store_true", default=False)
-    parser.add_argument("--chat-instructions", help="Initial directions to give Chat backend",
-                        default="You are an AI-driven chatbot")
-
-    return parser.parse_args()
 
 
 ###############################
@@ -56,7 +28,11 @@ def parseArgs():
 #
 if __name__ == "__main__":
     logger.info("Starting program")
-    args = parseArgs()
+
+    Shared.getInstance().root_dir = script_dir
+    args = Shared.getInstance().args
+    os.makedirs(args.temp_dir, exist_ok=True)
+
     if args.verbose:
         logging.basicConfig(stream=sys.stdout, level=logging.INFO, force=True)
 
