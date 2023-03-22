@@ -2,6 +2,7 @@
 from avatar.profile import Profile
 from pathlib import Path
 from typing import List
+from utils.shared import Shared
 import os
 import subprocess
 import logging
@@ -11,8 +12,7 @@ logger = logging.getLogger(__file__)
 
 # Taken from https://github.com/eyaler/avatars4all
 URL = "https://drive.google.com/uc?id=1dwHujX7RVNCvdR1RR93z0FS2T2yzqup9"
-CHECKPOINT = Path("models/wav2lip/wav2lip_gan.pth")
-# TODO: Shared CLI args
+CHECKPOINT = os.path.join(Shared.getInstance().data_dir, "wav2lip", "wav2lip_gan.pth")
 
 
 class LipSync:
@@ -22,7 +22,7 @@ class LipSync:
         self._wav_file: Path = Path(wav_filename)
 
         if not os.path.exists(CHECKPOINT):
-            gdown.download(url=URL, output=str(CHECKPOINT.resolve()))
+            gdown.download(url=URL, output=CHECKPOINT)
 
     def render(self, output_path: Path):
         '''

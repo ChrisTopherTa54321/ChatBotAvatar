@@ -7,21 +7,29 @@ import os
 class Shared:
     _inst: Shared = None
 
-    def __init__(self):
-        self._args: argparse.Namespace = None
-        self._root_dir: str = None
+    def __init__(self, root_dir: str):
+        self._root_dir: str = root_dir
+        self._args: argparse.Namespace = self._parse_args()
+
+    @classmethod
+    def init(cls, root_dir: str):
+        cls._inst = Shared(root_dir=root_dir)
 
     @classmethod
     def getInstance(cls):
-        if not Shared._inst:
-            Shared._inst = Shared()
-        return Shared._inst
+        if not cls._inst:
+            raise Exception("Not initialized")
+        return cls._inst
 
     @property
     def args(self):
         if not self._args:
             self._args = self._parse_args()
         return self._args
+
+    @property
+    def data_dir(self):
+        return os.path.join(self.root_dir, self.args.data_dir)
 
     @property
     def root_dir(self):
@@ -56,7 +64,6 @@ class Shared:
         parser.add_argument("--coqui-use-gpu", help="Use GPU for coqui TTS", action="store_true", default=False)
         parser.add_argument("--chat-instructions", help="Initial directions to give Chat backend",
                             default="You are an AI-driven chatbot")
-        parser.add_argument("--temp-dir", help="Directory to write temporary files",
-                            default=os.path.join(self.root_dir, "tmp"))
+        parser.add_argument("--temp-dir", help="Directory to write temporary files", default="tmp")
 
         return parser.parse_args()

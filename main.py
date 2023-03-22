@@ -28,8 +28,7 @@ logger = logging.getLogger(__file__)
 #
 if __name__ == "__main__":
     logger.info("Starting program")
-
-    Shared.getInstance().root_dir = script_dir
+    Shared.init(root_dir=script_dir)
     args = Shared.getInstance().args
     os.makedirs(args.temp_dir, exist_ok=True)
 
