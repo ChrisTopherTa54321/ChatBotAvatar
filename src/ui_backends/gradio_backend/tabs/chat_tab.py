@@ -37,6 +37,9 @@ class ChatTab(GradioTab):
         self._ui_streaming_audio: gr.Audio = None
         self._ui_full_audio: gr.Audio = None
 
+        self._ui_avatar_video: gr.Video = None
+        self._ui_avatar_button: gr.Button = None
+
     @override
     def build_ui(self):
         self._ui_chatbot = gr.Chatbot()
@@ -71,6 +74,10 @@ class ChatTab(GradioTab):
         with gr.Group():
             self._ui_streaming_audio = gr.Audio(elem_id="tts_streaming_audio_player")
             self._ui_full_audio = gr.Audio(label="Final Audio")
+
+        with gr.Group():
+            self._ui_avatar_video = gr.Video(label="Avatar", interactive=False)
+            self._ui_avatar_button = gr.Button("Generate Video")
 
         # Connect the interface components
         submit_inputs: List[gr.Component] = [self._ui_state, txt]
