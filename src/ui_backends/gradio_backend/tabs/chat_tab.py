@@ -130,28 +130,30 @@ class ChatTab(GradioTab):
         logger.info("Handle Relay Triggered")
         state, = args
 
-        # Get any new audio since the last call
-        audio_buffer, sampling_rate = self._tts_queue.get_new_audio()
-        if len(audio_buffer > 0):
-            return (sampling_rate, audio_buffer), None
+        tries = 2
 
-        # No new audio, maybe all audio is done?
-        if self._tts_queue.is_done():
-            logger.info("TTS queue is done! Return full audio clip")
-            audio_buffer, sampling_rate = self._tts_queue.get_all_audio()
-            if len(audio_buffer) > 0:
-                return None, (sampling_rate, audio_buffer)
+        while tries > 0:
+            # Get any new audio since the last call
+            new_audio_buffer, sampling_rate = self._tts_queue.get_new_audio()
+            if len(new_audio_buffer) > 0:
+                new_audio = (sampling_rate, new_audio_buffer)
+            else:
+                new_audio = None
 
-        logger.warn("No audio available, waiting...")
-        if self._tts_queue.wait_for_new_audio(30):
-            audio_buffer, sampling_rate = self._tts_queue.get_new_audio()
             if self._tts_queue.is_done():
-                all_audio_buffer, all_audio_sampling_rate = self._tts_queue.get_all_audio()
-                all_audio = (all_audio_sampling_rate, all_audio_buffer)
+                all_audio_buffer, sampling_rate = self._tts_queue.get_all_audio()
+                all_audio = (sampling_rate, all_audio_buffer)
             else:
                 all_audio = None
-            if len(audio_buffer > 0):
-                return (sampling_rate, audio_buffer), all_audio
+
+            if new_audio or all_audio:
+                return new_audio, all_audio
+
+            logger.warn("No audio available, waiting...")
+            if self._tts_queue.wait_for_new_audio(30):
+                tries -= 1
+                continue
+            break
 
         logger.warning("HandleRelayTrigger called but no audio found!")
         return None, None
@@ -197,7 +199,6 @@ class ChatTab(GradioTab):
             elif role == Chat.Roles.USER:
                 chat_output.append((msg, None))
             elif role == Chat.Roles.SYSTEM:
-                if False:
-                    chat_output.append((msg, None))
+                chat_output.append((msg, None))
 
         return chat_output, response
