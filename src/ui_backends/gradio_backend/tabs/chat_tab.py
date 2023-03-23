@@ -70,7 +70,7 @@ class ChatTab(GradioTab):
         with gr.Group():
             self._ui_audio_trigger_relay = gr.Checkbox(label="Audio Trigger Relay",
                                                        elem_id="audio_trigger_relay", value=False, visible=False)
-            self._ui_audio_poll_btn = gr.Button("Poll For Audio", elem_id="audio_poll_btn", visible=False)
+            self._ui_audio_poll_btn = gr.Button("Poll For Audio", elem_id="audio_poll_btn", visible=True)
         with gr.Group():
             self._ui_streaming_audio = gr.Audio(elem_id="tts_streaming_audio_player")
             self._ui_full_audio = gr.Audio(label="Final Audio")

@@ -15,6 +15,7 @@ from ui import Ui
 from ui_backends.gradio_backend.tab import GradioTab
 from ui_backends.gradio_backend.tabs.chat_tab import ChatTab
 from ui_backends.gradio_backend.tabs.avatar_tab import AvatarTab
+from ui_backends.gradio_backend.tabs.tools_tab import ToolsTab
 from avatar.manager import Manager
 from utils.tts_queue import TtsQueue
 
@@ -34,8 +35,9 @@ class GradioUi(Ui):
 
         self._chat_tab: ChatTab = ChatTab(chat_interface=self._chat, tts_interface=self._tts, tts_queue=self._tts_queue)
         self._avatar_tab: AvatarTab = AvatarTab(avatar_manager=avatar_manager)
+        self._tools_tab: ToolsTab = ToolsTab()
 
-        self._tabs: Dict[str, GradioTab] = {"Chat": self._chat_tab, "Avatars": self._avatar_tab}
+        self._tabs: Dict[str, GradioTab] = {"Chat": self._chat_tab, "Avatars": self._avatar_tab, "Tools": self._tools_tab}
 
         self._buildInterface()
         self._injectScripts(glob.glob(os.path.join(gradio_dir, "js", "*.js")))
