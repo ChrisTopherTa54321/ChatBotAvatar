@@ -4,6 +4,10 @@ import argparse
 import os
 
 from image_gen import ImageGen
+from chat import Chat
+from tts import Tts
+from ui import Ui
+from avatar.manager import Manager
 
 
 class Shared:
@@ -14,18 +18,53 @@ class Shared:
         self._args: argparse.Namespace = self._parse_args()
 
         self._image_gen: ImageGen = None
+        self._tts: Tts = None
+        self._ui: Ui = None
+        self._chat: Chat = None
 
+        self._avatar_manager: Manager = Manager(avatar_dir=self._args.avatar_dir)
+
+    def _init_from_settings(self, args: argparse.Namespace):
+        ''' Load backends for items specified in params'''
         # Select Image Generator backend
-        if self._args.image_gen_backend == "automatic1111":
+        if args.image_gen_backend == "automatic1111":
             from image_gen_backends.automatic1111 import Automatic1111
-            self._image_gen = Automatic1111(api_host=self._args.image_gen_webui_host,
-                                            api_port=self._args.image_gen_webui_port)
+            self._image_gen = Automatic1111(api_host=args.image_gen_webui_host,
+                                            api_port=args.image_gen_webui_port)
         else:
-            raise Exception(f"Unsupported ImageGen backend: {self._args.image_gen_backend}")
+            raise Exception(f"Unsupported ImageGen backend: {args.image_gen_backend}")
+
+        # Select Chat backend
+        if args.chat_backend == "chatgpt":
+            from chat_backends.chatgpt import ChatGpt
+            self._chat = ChatGpt(api_key=args.openai_api_key, initial_instructions=args.chat_instructions)
+        else:
+            raise Exception(f"Unsupported chat backend: {args.chat_backend}")
+
+        # Select TTS backend
+        if args.tts_backend == "azure":
+            from tts_backends.azure_tts import AzureTts
+            self._tts = AzureTts(api_key=args.azure_api_key, api_region=args.azure_api_region)
+        elif args.tts_backend == "coqui":
+            from tts_backends.coqui_tts import CoquiTts
+            self._tts = CoquiTts(use_gpu=args.coqui_use_gpu)
+        elif args.tts_backend == "pyttsx3":
+            from tts_backends.pyttsx3_tts import Pyttsx3Tts
+            self._tts = Pyttsx3Tts()
+        else:
+            raise Exception(f"Unsupported TTS backend: {args.tts_backend}")
+
+        # Select UI backend
+        if args.ui_backend == "gradio":
+            from ui_backends.gradio_ui import GradioUi
+            self._ui = GradioUi(jobs=args.jobs)
+        else:
+            raise Exception(f"Unsupported UI backend: {args.ui_backend}")
 
     @classmethod
     def init(cls, root_dir: str):
         cls._inst = Shared(root_dir=root_dir)
+        cls._inst._init_from_settings(cls._inst.args)
 
     @classmethod
     def getInstance(cls):
@@ -52,8 +91,24 @@ class Shared:
         self._root_dir = new_path
 
     @property
-    def image_gen(self):
+    def image_gen(self) -> ImageGen:
         return self._image_gen
+
+    @property
+    def tts(self) -> Tts:
+        return self._tts
+
+    @property
+    def chat(self) -> Chat:
+        return self._chat
+
+    @property
+    def ui(self) -> Ui:
+        return self._ui
+
+    @property
+    def avatar_manager(self) -> Manager:
+        return self._avatar_manager
 
     def _parse_args(self):
         parser = argparse.ArgumentParser(description="ChatBot",

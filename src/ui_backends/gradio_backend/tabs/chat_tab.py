@@ -10,15 +10,14 @@ from chat import Chat
 from tts import Tts
 from ui_backends.gradio_backend.tab import GradioTab
 from utils.tts_queue import TtsQueue
+from utils.shared import Shared
 
 logger = logging.getLogger(__file__)
 
 
 class ChatTab(GradioTab):
-    def __init__(self, chat_interface: Chat, tts_interface: Tts, tts_queue: TtsQueue):
+    def __init__(self, tts_queue: TtsQueue):
         # todo: manage access to these
-        self._tts = tts_interface
-        self._chat = chat_interface
         self._tts_queue = tts_queue
 
         self._ui_chatbot: gr.Chatbot = None
@@ -55,7 +54,7 @@ class ChatTab(GradioTab):
             self._ui_speak_textbox = gr.Textbox()
         with gr.Row():
             self._ui_speak_btn = gr.Button("Speak")
-            voiceList = self._tts.get_voice_list()
+            voiceList = Shared.getInstance().tts.get_voice_list()
             voiceNameList = [voice.get_name() for voice in voiceList]
             styleList = voiceList[0].get_styles_available() if len(voiceList) > 0 else []
             # self._uiAutoPlay = gr.Checkbox(label="Speak Responses", value=False)
@@ -122,7 +121,8 @@ class ChatTab(GradioTab):
         self._app.launch(server_name=server_name, server_port=port)
 
     def _handleClearClick(self, *args, **kwargs):
-        self._chat.reset()
+        # TODO: Per-client reset
+        Shared.getInstance().chat.reset()
         return [(None, None)]
 
     def _handleAudioRelayTriggered(self, *args, **kwargs):
@@ -162,7 +162,7 @@ class ChatTab(GradioTab):
         ''' Kicks off speech synthesis, blocks until first samples arrive '''
         logger.info("handleSpeakButton pressed")
         state, response_text, voice, style, pitch, rate, relay_state = args
-        voice = self._tts.get_voice(voice)
+        voice = Shared.getInstance().tts.get_voice(voice)
         voice.set_style(style)
         if pitch:
             voice.set_pitch(pitch)
@@ -181,15 +181,15 @@ class ChatTab(GradioTab):
 
     def _handleVoiceNameChange(self, *args, **kwargs):
         state, voiceName, = args
-        voice = self._tts.get_voice(voiceName)
+        voice = Shared.getInstance().tts.get_voice(voiceName)
         styles = voice.get_styles_available()
         return gr.Dropdown.update(choices=styles, interactive=True, value=styles[0])
 
     def submitText(self, *args, **kwargs) -> Tuple[Tuple[str, str], str]:
         state, inputText, = args
-        response = self._chat.send_text(inputText)
+        response = Shared.getInstance().chat.send_text(inputText)
 
-        history = self._chat.get_history()
+        history = Shared.getInstance().chat.get_history()
         # Convert to Gradio's (user, ai) format
         chat_output: List[Tuple[str, str]] = []
         for role, response in history:

@@ -19,6 +19,8 @@ from ui_backends.gradio_backend.tabs.tools_tab import ToolsTab
 from avatar.manager import Manager
 from utils.tts_queue import TtsQueue
 
+from utils.shared import Shared
+
 logger = logging.getLogger(__file__)
 
 script_dir = pathlib.Path(__file__).parent.resolve()
@@ -26,18 +28,17 @@ gradio_dir = os.path.join(script_dir, "gradio_backend")
 
 
 class GradioUi(Ui):
-    def __init__(self, chat_interface: Chat, tts_interface: Tts, avatar_manager: Manager, jobs: int = 3):
+    def __init__(self, jobs: int = 3):
         self._app: gr.Blocks = None
-        self._chat: Chat = chat_interface
-        self._tts: Tts = tts_interface
-        self._tts_queue: TtsQueue = TtsQueue(self._tts)
+        self._tts_queue: TtsQueue = TtsQueue(tts=Shared.getInstance().tts)
         self._job_cnt_arg = jobs
 
-        self._chat_tab: ChatTab = ChatTab(chat_interface=self._chat, tts_interface=self._tts, tts_queue=self._tts_queue)
-        self._avatar_tab: AvatarTab = AvatarTab(avatar_manager=avatar_manager)
+        self._chat_tab: ChatTab = ChatTab(tts_queue=self._tts_queue)
+        self._avatar_tab: AvatarTab = AvatarTab()
         self._tools_tab: ToolsTab = ToolsTab()
 
-        self._tabs: Dict[str, GradioTab] = {"Chat": self._chat_tab, "Avatars": self._avatar_tab, "Tools": self._tools_tab}
+        self._tabs: Dict[str, GradioTab] = {"Chat": self._chat_tab,
+                                            "Avatars": self._avatar_tab, "Tools": self._tools_tab}
 
         self._buildInterface()
         self._injectScripts(glob.glob(os.path.join(gradio_dir, "js", "*.js")))

@@ -8,6 +8,7 @@ from typing_extensions import override
 
 from avatar.manager import Manager
 from ui_backends.gradio_backend.tab import GradioTab
+from utils.shared import Shared
 
 logger = logging.getLogger(__file__)
 
@@ -15,8 +16,8 @@ logger = logging.getLogger(__file__)
 class AvatarTab(GradioTab):
     PREVIEW_IMAGE_COLUMN_CNT = 8
 
-    def __init__(self, avatar_manager: Manager):
-        self._manager: Manager = avatar_manager
+    def __init__(self):
+        self._manager: Manager = Shared.getInstance().avatar_manager
         self._ui_refresh_btn: gr.Button = None
         self._ui_avatar_list_gallery: gr.Gallery = None
 
