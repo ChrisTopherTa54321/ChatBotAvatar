@@ -3,6 +3,8 @@ from __future__ import annotations
 import argparse
 import os
 
+from image_gen import ImageGen
+
 
 class Shared:
     _inst: Shared = None
@@ -10,6 +12,16 @@ class Shared:
     def __init__(self, root_dir: str):
         self._root_dir: str = root_dir
         self._args: argparse.Namespace = self._parse_args()
+
+        self._image_gen: ImageGen = None
+
+        # Select Image Generator backend
+        if self._args.image_gen_backend == "automatic1111":
+            from image_gen_backends.automatic1111 import Automatic1111
+            self._image_gen = Automatic1111(api_host=self._args.image_gen_webui_host,
+                                            api_port=self._args.image_gen_webui_port)
+        else:
+            raise Exception(f"Unsupported ImageGen backend: {self._args.image_gen_backend}")
 
     @classmethod
     def init(cls, root_dir: str):
@@ -39,6 +51,10 @@ class Shared:
     def root_dir(self, new_path: str):
         self._root_dir = new_path
 
+    @property
+    def image_gen(self):
+        return self._image_gen
+
     def _parse_args(self):
         parser = argparse.ArgumentParser(description="ChatBot",
                                          formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -59,6 +75,9 @@ class Shared:
         parser.add_argument("--avatar-dir", help="Avatar directory",  default="avatar")
         parser.add_argument("--tts-backend", choices=["pyttsx3", "azure", "coqui"], default="pyttsx3")
         parser.add_argument("--ui-backend", choices=["gradio"], default="gradio")
+        parser.add_argument("--image-gen-backend", choices=["automatic1111"], default="automatic1111")
+        parser.add_argument("--image-gen-webui-host", help="Automatic1111 webui host", default="localhost")
+        parser.add_argument("--image-gen-webui-port", help="Automatic1111 webui port", default="7860")
         parser.add_argument("--jobs", help="Max concurrent Gradio jobs", default=3)
         parser.add_argument("--chat-backend", choices=["chatgpt"], default="chatgpt")
         parser.add_argument("--coqui-use-gpu", help="Use GPU for coqui TTS", action="store_true", default=False)
