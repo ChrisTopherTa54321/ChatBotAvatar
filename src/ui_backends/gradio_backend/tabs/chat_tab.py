@@ -9,6 +9,7 @@ from typing_extensions import override
 from chat import Chat
 from tts import Tts
 from ui_backends.gradio_backend.tab import GradioTab
+from ui_backends.gradio_backend.components.tts_settings import TtsSettings
 from utils.tts_queue import TtsQueue
 from utils.shared import Shared
 
@@ -25,10 +26,9 @@ class ChatTab(GradioTab):
         self._ui_speak_textbox: gr.Textbox = None
         self._ui_speak_btn: gr.Button = None
         # self._uiAutoPlay: gr.Checkbox = None
-        self._ui_voice_dropdown: gr.Dropdown = None
-        self._ui_voice_style_dropdown: gr.Dropdown = None
-        self._ui_pitch_textbox: gr.Textbox = None
-        self._ui_rate_textbox: gr.Textbox = None
+
+        self._ui_voice_settings: TtsSettings = None
+
         self._ui_clear_btn: gr.Button = None
 
         self._ui_audio_trigger_relay: gr.Checkbox = None
@@ -54,16 +54,8 @@ class ChatTab(GradioTab):
             self._ui_speak_textbox = gr.Textbox()
         with gr.Row():
             self._ui_speak_btn = gr.Button("Speak")
-            voiceList = Shared.getInstance().tts.get_voice_list()
-            voiceNameList = [voice.get_name() for voice in voiceList]
-            styleList = voiceList[0].get_styles_available() if len(voiceList) > 0 else []
-            # self._uiAutoPlay = gr.Checkbox(label="Speak Responses", value=False)
-            self._ui_voice_dropdown = gr.Dropdown(label="Voices", multiselect=False,
-                                                  choices=voiceNameList, value=voiceNameList[0])
-            self._ui_voice_style_dropdown = gr.Dropdown(label="Styles", multiselect=False,
-                                                        choices=styleList, value=styleList[0])
-            self._ui_pitch_textbox = gr.Textbox(label="Pitch")
-            self._ui_rate_textbox = gr.Textbox(label="Rate")
+            self._ui_voice_settings = TtsSettings()
+            self._ui_voice_settings.build_component()
 
         # Hidden helpers for audio chunking
         with gr.Group():
@@ -85,15 +77,13 @@ class ChatTab(GradioTab):
         txt.submit(self.submitText, inputs=submit_inputs, outputs=submit_outputs)
         submit_btn.click(self.submitText, inputs=submit_inputs, outputs=submit_outputs)
 
-        self._ui_voice_dropdown.change(self._handleVoiceNameChange, inputs=[
-            self._ui_state, self._ui_voice_dropdown], outputs=[self._ui_voice_style_dropdown])
         clear_btn.click(fn=self._handleClearClick, inputs=[self._ui_state], outputs=[self._ui_chatbot])
 
         self._ui_speak_btn.click(fn=self._clear_component, inputs=[], outputs=[self._ui_streaming_audio])
         self._ui_speak_btn.click(fn=None, _js="start_listen_for_audio_component_updates")
         self._ui_speak_btn.click(self._handleSpeakButton,
-                                 inputs=[self._ui_state, self._ui_speak_textbox, self._ui_voice_dropdown, self._ui_voice_style_dropdown,
-                                         self._ui_pitch_textbox, self._ui_rate_textbox, self._ui_audio_trigger_relay],
+                                 inputs=self._ui_voice_settings.add_inputs(
+                                     [self._ui_state, self._ui_speak_textbox, self._ui_audio_trigger_relay]),
                                  outputs=[self._ui_audio_trigger_relay])
 
         # Hack:
@@ -110,15 +100,6 @@ class ChatTab(GradioTab):
     def _clear_component(self, *args, **kwargs):
         logger.info("Clearing component")
         return None
-
-    @override
-    def launch(self, listen: bool, port: int):
-        ''' Launches the UI and blocks until complete '''
-        if self._job_cnt_arg > 1:
-            self._app.queue(concurrency_count=self._job_cnt_arg)
-
-        server_name = "0.0.0.0" if listen else None
-        self._app.launch(server_name=server_name, server_port=port)
 
     def _handleClearClick(self, *args, **kwargs):
         # TODO: Per-client reset
@@ -160,14 +141,12 @@ class ChatTab(GradioTab):
 
     def _handleSpeakButton(self, *args, **kwargs) -> Tuple[int, np.array]:
         ''' Kicks off speech synthesis, blocks until first samples arrive '''
+
+        args, voice_inputs = self._ui_voice_settings.consume_inputs(args)
+        voice = self._ui_voice_settings.create_from_inputs(voice_inputs)
+
         logger.info("handleSpeakButton pressed")
-        state, response_text, voice, style, pitch, rate, relay_state = args
-        voice = Shared.getInstance().tts.get_voice(voice)
-        voice.set_style(style)
-        if pitch:
-            voice.set_pitch(pitch)
-        if rate:
-            voice.set_rate(rate)
+        state, response_text, relay_state = args
 
         self._tts_queue.start_synthesis(response_text, voice)
         logger.info("Waiting for first samples...")
@@ -178,12 +157,6 @@ class ChatTab(GradioTab):
             return not relay_state
         logger.info("No samples received before timeout")
         return relay_state
-
-    def _handleVoiceNameChange(self, *args, **kwargs):
-        state, voiceName, = args
-        voice = Shared.getInstance().tts.get_voice(voiceName)
-        styles = voice.get_styles_available()
-        return gr.Dropdown.update(choices=styles, interactive=True, value=styles[0])
 
     def submitText(self, *args, **kwargs) -> Tuple[Tuple[str, str], str]:
         state, inputText, = args

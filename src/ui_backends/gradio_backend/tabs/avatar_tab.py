@@ -24,7 +24,7 @@ class AvatarTab(GradioTab):
     @override
     def build_ui(self):
         with gr.Row():
-            self._ui_refresh_btn = gr.Button("Refresh")
+            self._ui_refresh_btn = gr.Button("Refresh Avatar List")
         with gr.Row():
             self._ui_avatar_list_gallery = gr.Gallery(show_label=False, elem_id="avatar_list_gallery").style(
                 grid=AvatarTab.PREVIEW_IMAGE_COLUMN_CNT, preview=False)
