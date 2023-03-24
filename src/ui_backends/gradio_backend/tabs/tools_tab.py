@@ -38,6 +38,7 @@ class ToolsTab(GradioTab):
 
     @override
     def build_ui(self):
+        self._ui_lip_sync_input = gr.Video(label="Lip Sync Input", render=False)
         with gr.Accordion("Motion Match", open=False):
             gr.Markdown("""
             <p>
@@ -51,8 +52,13 @@ class ToolsTab(GradioTab):
                 self._ui_motion_match_input_image = gr.Image(label="Motion Match Input Image")
                 self._ui_motion_match_driving_video = gr.Video(label="Driving Video")
             with gr.Row():
-                self._ui_motion_match_btn = gr.Button("Run Motion Match")
-                self._ui_motion_match_output_video = gr.Video(label="Motion Match Output")
+                self._ui_motion_match_output_video = gr.Video(label="Motion Match Output", render=False)
+                with gr.Column():
+                    self._ui_motion_match_btn = gr.Button("Run Motion Match")
+                    gr.Button("Send to Lip Sync").click(fn=lambda x: x, inputs=[
+                        self._ui_motion_match_output_video], outputs=[self._ui_lip_sync_input])
+                with gr.Column():
+                    self._ui_motion_match_output_video.render()
 
         with gr.Accordion("Lip Sync", open=False):
             gr.Markdown("""
@@ -63,7 +69,7 @@ class ToolsTab(GradioTab):
             </p>
             """)
             with gr.Row():
-                self._ui_lip_sync_input = gr.Video(label="Lip Sync Input")
+                self._ui_lip_sync_input.render()  # = gr.Video(label="Lip Sync Input")
                 self._ui_lip_sync_audio = gr.Audio(label="Lip Sync Audio")
             with gr.Row():
                 self._ui_lip_sync_btn = gr.Button("Run Lip Sync")
