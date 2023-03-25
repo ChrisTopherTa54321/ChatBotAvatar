@@ -39,11 +39,12 @@ class Profile(Serializable):
 
     def save(self, profile_image: Optional[Union[np.ndarray, Image.Image]] = None):
         ''' Saves the profile to the profile_dir '''
+        data = self.as_dict()
         if profile_image is not None:
             if isinstance(profile_image, np.ndarray):
                 profile_image = Image.fromarray(profile_image)
             profile_image.save(self.preview_image_path)
-        data = self.as_dict()
+            data[Profile.JsonKeys.PREVIEW_IMAGE] = self.preview_image_path
 
         os.makedirs(os.path.dirname(self.profile_json_path), exist_ok=True)
         with open(self.profile_json_path, "w") as fhndl:
@@ -108,7 +109,7 @@ class Profile(Serializable):
     def as_dict(self) -> Dict[str, Any]:
         ret: Dict[str, Any] = {}
         ret[Profile.JsonKeys.NAME] = self._name
-        ret[Profile.JsonKeys.PROFILE_DIR] = self._dir
+        ret[Profile.JsonKeys.PROFILE_DIR] = self._dir.name
         ret[Profile.JsonKeys.PREVIEW_IMAGE] = self._preview_image_path
         if self._voice:
             voice_json = self._voice.as_dict()

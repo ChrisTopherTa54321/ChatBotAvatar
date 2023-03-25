@@ -39,6 +39,9 @@ class Manager:
             raise Exception("Not deleting from profile directory outside of avatar")
         shutil.rmtree(profile.directory, ignore_errors=True)
 
+    def save_profile(self, profile: Profile) -> None:
+        pass
+
     def refresh(self) -> None:
         ''' Updates the list of avatars '''
         self._avatars = self._get_profiles(os.path.join(self._root_dir, "avatars"))

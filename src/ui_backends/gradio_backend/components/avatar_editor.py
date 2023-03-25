@@ -81,7 +81,8 @@ class AvatarEditor(GradioComponent):
 
         profile = Profile(profile_dir=directory, name=name)
         profile.voice = voice
-        profile.save(profile_image=profile_image)
+        profile.preview_image = profile_image
+        Shared.getInstance().avatar_manager.save(profile)
 
     def load_profile(self, profile: Profile):
         ''' Fills in the AvatarEditor settings from a Profile '''
