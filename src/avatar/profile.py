@@ -1,16 +1,20 @@
 ''' Class representing a single avatar '''
 from __future__ import annotations
-from typing import Dict, Any, Optional, Union
-from typing_extensions import override
+
+import json
+import os
 from dataclasses import dataclass
-from tts import Tts
-from utils.voice_factory import VoiceFactory
-from serializeable import Serializable
+from io import TextIOWrapper
+from pathlib import Path
+from typing import Any, Dict, Optional, Union
+
 import numpy as np
 from PIL import Image
-import os
-import json
-from io import TextIOWrapper
+from typing_extensions import override
+
+from serializeable import Serializable
+from tts import Tts
+from utils.voice_factory import VoiceFactory
 
 
 class Profile(Serializable):
@@ -27,9 +31,9 @@ class Profile(Serializable):
         PREVIEW_IMAGE: str = "preview_image"
         VOICE_INFO: str = "voice_info"
 
-    def __init__(self, profile_dir: str, name: str = "Nameless"):
+    def __init__(self, profile_dir: Path, name: str = "Nameless"):
         self._name: str = name
-        self._dir: str = profile_dir
+        self._dir: Path = Path(profile_dir)
         self._preview_image_path: Optional[str] = None
         self._voice: Tts.Voice = None
 
@@ -110,29 +114,3 @@ class Profile(Serializable):
             voice_json = self._voice.as_dict()
             ret[Profile.JsonKeys.VOICE_INFO] = voice_json
         return ret
-
-    # @ classmethod
-    # def from_json(cls, profile_json_path: str) -> Profile:
-    #     '''
-    #     Return an Avatar from a JSON file
-
-    #     Args:
-    #         path (str): path to JSON
-
-    #     Returns:
-    #         Profile: An initialized Profile
-    #     '''
-    #     profile_data: Dict[str, Any] = json.load(open(profile_json_path))
-    #     new_profile = Profile(profile_dir=os.path.dirname(profile_json_path))
-    #     new_profile._load_dict(profile_data)
-
-    #     return new_profile
-
-    # def to_json(self) -> str:
-    #     '''
-    #     Returns the JSON avatar profile
-
-    #     Returns:
-    #         str: json avatar profile
-    #     '''
-    #     return json.dumps(self._as_dict())

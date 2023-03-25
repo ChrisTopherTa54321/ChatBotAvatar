@@ -15,6 +15,7 @@ from typing_extensions import override
 from image_gen import ImageGen
 from tts import Tts
 from ui_backends.gradio_backend.tab import GradioTab
+from ui_backends.gradio_backend.components.image_generator import ImageGenerator
 
 logger = logging.getLogger(__file__)
 
@@ -32,9 +33,11 @@ class ToolsTab(GradioTab):
         self._ui_motion_match_driving_video: gr.Video = None
         self._ui_motion_match_output_video: gr.Video = None
 
-        self._ui_image_gen_textbox: gr.Textbox = None
-        self._ui_image_gen_btn: gr.Button = None
-        self._ui_image_gen_output: gr.Image = None
+        self._ui_image_gen: ImageGenerator = None
+
+        # self._ui_image_gen_textbox: gr.Textbox = None
+        # self._ui_image_gen_btn: gr.Button = None
+        # self._ui_image_gen_output: gr.Image = None
 
     @override
     def build_ui(self):
@@ -75,23 +78,13 @@ class ToolsTab(GradioTab):
                 self._ui_lip_sync_btn = gr.Button("Run Lip Sync")
                 self._ui_lip_sync_output_video = gr.Video(label="Lip Sync Output")
 
-        with gr.Accordion("Image Gen", open=False):
-            with gr.Row():
-                with gr.Column(scale=3):
-                    self._ui_image_gen_textbox = gr.Textbox(
-                        show_label=False, placeholder="Enter text and press enter").style(container=False)
-                with gr.Column(scale=1):
-                    self._ui_image_gen_btn = gr.Button("Generate Image")
-            with gr.Row():
-                self._ui_image_gen_output = gr.Image(label="Output", interactive=False)
+        self._ui_image_gen = ImageGenerator()
+        self._ui_image_gen.build_component()
 
         self._ui_lip_sync_btn.click(fn=self._handle_lip_sync_clicked, inputs=[
                                     self._ui_lip_sync_audio, self._ui_lip_sync_input], outputs=[self._ui_lip_sync_output_video])
         self._ui_motion_match_btn.click(fn=self._handle_motion_match_clicked, inputs=[
                                         self._ui_motion_match_driving_video, self._ui_motion_match_input_image], outputs=[self._ui_motion_match_output_video])
-
-        self._ui_image_gen_btn.click(fn=self._handle_image_gen_clicked, inputs=[
-                                     self._ui_image_gen_textbox], outputs=[self._ui_image_gen_output])
 
     def _handle_image_gen_clicked(self, prompt: str) -> Tuple[np.array]:
         image_gen = Shared.getInstance().image_gen

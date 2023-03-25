@@ -10,5 +10,5 @@ class Automatic1111(ImageGen):
         self._api: webuiapi.WebUIApi = webuiapi.WebUIApi(host=api_host, port=api_port)
 
     @override
-    def gen_image(self, prompt: str) -> Optional[str]:
-        return self._api.txt2img(prompt=prompt)
+    def gen_image(self, prompt: str, **kwargs) -> Optional[str]:
+        return self._api.txt2img(prompt=prompt, **kwargs)

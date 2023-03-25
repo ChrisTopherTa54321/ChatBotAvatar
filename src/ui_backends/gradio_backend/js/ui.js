@@ -10,6 +10,11 @@ function prompt_for_name() {
     return prompt("Enter name");
 }
 
+function confirm_prompt() {
+    return confirm("Are you sure?");
+}
+
+
 function stop_listen_for_audio_component_updates() {
     tts_audio_observer.disconnect();
     console.log("Stopped watching for audio changes");

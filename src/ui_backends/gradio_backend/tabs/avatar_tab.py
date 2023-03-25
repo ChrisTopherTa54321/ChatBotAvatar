@@ -26,6 +26,7 @@ class AvatarTab(GradioTab):
         self._ui_avatar_list_gallery: gr.Gallery = None
         self._ui_avatar_editor: AvatarEditor = None
         self._ui_new_btn: gr.Button = None
+        self._ui_del_btn: gr.Button = None
 
     @override
     def build_ui(self):
@@ -35,6 +36,7 @@ class AvatarTab(GradioTab):
         with gr.Row():
             self._ui_refresh_btn = gr.Button("Refresh Avatar List")
             self._ui_new_btn = gr.Button("Create New Avatar")
+            self._ui_del_btn = gr.Button("Delete")
         with gr.Row():
             self._ui_avatar_editor = AvatarEditor()
             self._ui_avatar_editor.build_component()
@@ -42,6 +44,8 @@ class AvatarTab(GradioTab):
         hidden_name_box: gr.Textbox = gr.Textbox(visible=False)
         self._ui_new_btn.click(fn=self._handle_new_avatar_clicked,
                                _js='prompt_for_name', inputs=[hidden_name_box], outputs=[hidden_name_box])
+        self._ui_del_btn.click(fn=self._handle_delete_clicked, _js="confirm_prompt",
+                               inputs=[hidden_name_box], outputs=[hidden_name_box])
         self._ui_refresh_btn.click(fn=self._handle_refresh_clicked, inputs=[], outputs=[self._ui_avatar_list_gallery])
         self._ui_avatar_list_gallery.select(fn=self._handle_avatar_list_selection, inputs=[self._ui_avatar_editor.get_update_trigger()], outputs=[
                                             self._ui_avatar_editor.get_update_trigger()])
@@ -49,6 +53,12 @@ class AvatarTab(GradioTab):
     def _handle_new_avatar_clicked(self, new_name: str):
         logger.info(f"Create new avatar: {new_name}")
         profile: Profile = self._manager.create_new_profile(profile_path=new_name)
+
+    def _handle_delete_clicked(self, confirm: bool):
+        confirm = (not confirm or confirm != "False")
+        if confirm:
+            self._manager.delete_profile(self._manager.active_profile)
+            self._manager.refresh()
 
     def _handle_refresh_clicked(self) -> Tuple[gr.Gallery]:
         ''' Refresh the gallery when the Refresh button is clicked'''

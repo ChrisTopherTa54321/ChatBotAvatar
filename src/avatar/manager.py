@@ -4,13 +4,15 @@ from typing import List
 import glob
 import os
 import logging
+import shutil
+from pathlib import Path
 
 logger = logging.getLogger(__file__)
 
 
 class Manager:
-    def __init__(self, avatar_dir: str):
-        self._root_dir = avatar_dir
+    def __init__(self, avatar_dir: Path):
+        self._root_dir: Path = Path(avatar_dir)
         self._avatars: List[Profile] = []
         self._driving_videos: List[str] = []
         self._active_profile: Profile = None
@@ -31,6 +33,11 @@ class Manager:
         new_profile = Profile(os.path.join(self._root_dir, "avatars", profile_path))
         new_profile.save()
         return new_profile
+
+    def delete_profile(self, profile: Profile) -> None:
+        if not self._root_dir in profile.directory.parents:
+            raise Exception("Not deleting from profile directory outside of avatar")
+        shutil.rmtree(profile.directory, ignore_errors=True)
 
     def refresh(self) -> None:
         ''' Updates the list of avatars '''
