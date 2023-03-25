@@ -47,12 +47,12 @@ class AvatarTab(GradioTab):
         self._ui_del_btn.click(fn=self._handle_delete_clicked, _js="confirm_prompt",
                                inputs=[hidden_name_box], outputs=[hidden_name_box])
         self._ui_refresh_btn.click(fn=self._handle_refresh_clicked, inputs=[], outputs=[self._ui_avatar_list_gallery])
-        self._ui_avatar_list_gallery.select(fn=self._handle_avatar_list_selection, inputs=[self._ui_avatar_editor.get_update_trigger()], outputs=[
-                                            self._ui_avatar_editor.get_update_trigger()])
+        self._ui_avatar_list_gallery.select(fn=self._handle_avatar_list_selection, inputs=[self._ui_avatar_editor.get_refresh_trigger()], outputs=[
+                                            self._ui_avatar_editor.get_refresh_trigger()])
 
     def _handle_new_avatar_clicked(self, new_name: str):
         logger.info(f"Create new avatar: {new_name}")
-        profile: Profile = self._manager.create_new_profile(profile_path=new_name)
+        profile: Profile = self._manager.create_new_profile(profile_name=new_name)
 
     def _handle_delete_clicked(self, confirm: bool):
         confirm = (not confirm or confirm != "False")
@@ -63,7 +63,8 @@ class AvatarTab(GradioTab):
     def _handle_refresh_clicked(self) -> Tuple[gr.Gallery]:
         ''' Refresh the gallery when the Refresh button is clicked'''
         self._manager.refresh()
-        images = [[ImageUtils.open_or_blank(profile.preview_image_path), profile.name]
+
+        images = [[profile.preview_image, profile.friendly_name]
                   for profile in self._manager.list_avatars()]
         return images
 

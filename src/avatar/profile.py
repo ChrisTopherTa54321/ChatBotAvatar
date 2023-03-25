@@ -15,9 +15,12 @@ from typing_extensions import override
 from serializeable import Serializable
 from tts import Tts
 from utils.voice_factory import VoiceFactory
+from utils.image_utils import ImageUtils
 
 
 class Profile(Serializable):
+    DEFAULT_NAME: str = "Anonymous Avatar"
+
     @dataclass
     class Filenames:
         JSON: str = "profile.json"
@@ -26,65 +29,65 @@ class Profile(Serializable):
     @dataclass
     class JsonKeys:
         ''' Key names for the profile.json '''
-        NAME: str = "name"
-        PROFILE_DIR: str = "directory"
+        FRIENDLY_NAME: str = "friendly_name"
         PREVIEW_IMAGE: str = "preview_image"
         VOICE_INFO: str = "voice_info"
 
-    def __init__(self, profile_dir: Path, name: str = "Nameless"):
-        self._name: str = name
-        self._dir: Path = Path(profile_dir)
-        self._preview_image_path: Optional[str] = None
+    def __init__(self, profile_root_dir: Path, friendly_name: str = DEFAULT_NAME):
+        self._root_dir: Path = Path(profile_root_dir)
+        self._name: str = os.path.basename(self._root_dir)
+        self._friendly_name: str = friendly_name
+        self._preview_image: Optional[np.ndarray] = None
         self._voice: Tts.Voice = None
 
-    def save(self, profile_image: Optional[Union[np.ndarray, Image.Image]] = None):
-        ''' Saves the profile to the profile_dir '''
-        data = self.as_dict()
-        if profile_image is not None:
-            if isinstance(profile_image, np.ndarray):
-                profile_image = Image.fromarray(profile_image)
-            profile_image.save(self.preview_image_path)
-            data[Profile.JsonKeys.PREVIEW_IMAGE] = self.preview_image_path
+    def save(self, output_dir: Path, overwrite: bool = True):
+        '''
+        Saves the profile to the output directory
 
-        os.makedirs(os.path.dirname(self.profile_json_path), exist_ok=True)
-        with open(self.profile_json_path, "w") as fhndl:
+        Args:
+            output_dir (Path): profile directory to write to
+            overwrite (bool, optional): if True then overwrite existing directories
+        '''
+        output_dir = Path(output_dir)
+        os.makedirs(output_dir, exist_ok=overwrite)
+        data = self.as_dict()
+        if self._preview_image is not None:
+            ImageUtils.copy_or_save(self.preview_image, os.path.join(output_dir, Profile.Filenames.PREVIEW))
+        with open(os.path.join(output_dir, Profile.Filenames.JSON), "w") as fhndl:
             json.dump(data, fhndl)
 
     @classmethod
-    def from_stream(cls, stream: TextIOWrapper) -> Profile:
-        data = json.load(stream)
-        new_profile: Profile = Profile(profile_dir=data[Profile.JsonKeys.PROFILE_DIR], name=data[Profile.JsonKeys.NAME])
-        voice_info = data.get(Profile.JsonKeys.VOICE_INFO, None)
-        if voice_info:
-            new_profile.voice = VoiceFactory.create_voice_from_dict(voice_info)
+    def from_profile_directory(cls, profile_directory: Path) -> Profile:
+        profile_json_path = os.path.join(profile_directory, Profile.Filenames.JSON)
+        with open(profile_json_path, 'r') as fhndl:
+            data = json.load(fhndl)
+
+        new_profile: Profile = Profile(profile_root_dir=profile_directory).from_dict(data)
         return new_profile
 
-    @classmethod
-    def from_json_file(cls, json_path: str) -> Profile:
-        return cls.from_stream(open(json_path, "r"))
-
     @property
-    def name(self):
-        ''' The name of the Avatar  '''
+    def name(self) -> str:
+        ''' The name of the avatar  '''
         return self._name
 
     @property
-    def preview_image(self) -> np.ndarray:
+    def friendly_name(self) -> str:
+        ''' The friendly name of the avatar '''
+        return self._friendly_name
+
+    @friendly_name.setter
+    def friendly_name(self, new_name: str):
+        ''' Set the friendly name of the avatar '''
+        self._friendly_name = new_name
+
+    @property
+    def preview_image(self) -> Image.Image:
         ''' returns an image for this avatar '''
+        return ImageUtils.open_or_blank(self._preview_image)
 
-    @property
-    def preview_image_path(self):
-        ''' The path to the preview image for this avatar'''
-        return os.path.join(self._dir, Profile.Filenames.PREVIEW)
-
-    @property
-    def profile_json_path(self) -> str:
-        ''' The path to the JSON for this avatar'''
-        return os.path.join(self._dir, Profile.Filenames.JSON)
-
-    @property
-    def directory(self) -> str:
-        return self._dir
+    @preview_image.setter
+    def preview_image(self, image: Union[np.ndarray, Path]):
+        self._preview_image = ImageUtils.image_data(image)
 
     @property
     def voice(self) -> Tts.Voice:
@@ -95,22 +98,24 @@ class Profile(Serializable):
         self._voice = new_voice
 
     @override
-    def from_dict(self, info: Dict[str, Any]) -> Any:
+    def from_dict(self, info: Dict[str, Any]) -> Profile:
         ''' Loads data from a dict into the Profile '''
-        self._name = data.get(Profile.JsonKeys.NAME, self._name)
-        self._preview_image_path = data.get(Profile.JsonKeys.PREVIEW_IMAGE, self._preview_image_path)
-        voice_info = data.get(Profile.JsonKeys.VOICE_INFO, None)
+        self._friendly_name = info.get(Profile.JsonKeys.FRIENDLY_NAME, Profile.DEFAULT_NAME)
+        voice_info = info.get(Profile.JsonKeys.VOICE_INFO, None)
         if voice_info:
-            self._voice = VoiceFactory.from_dict(voice_info)
+            self._voice = VoiceFactory.create_voice_from_dict(voice_info)
         else:
             self._voice = None
+        preview_image_path = info.get(Profile.JsonKeys.PREVIEW_IMAGE, None)
+        if preview_image_path:
+            self._preview_image = ImageUtils.open_or_blank(self._root_dir.joinpath(preview_image_path))
+        return self
 
     @override
     def as_dict(self) -> Dict[str, Any]:
         ret: Dict[str, Any] = {}
-        ret[Profile.JsonKeys.NAME] = self._name
-        ret[Profile.JsonKeys.PROFILE_DIR] = self._dir.name
-        ret[Profile.JsonKeys.PREVIEW_IMAGE] = self._preview_image_path
+        ret[Profile.JsonKeys.FRIENDLY_NAME] = self._friendly_name
+        ret[Profile.JsonKeys.PREVIEW_IMAGE] = Profile.Filenames.PREVIEW
         if self._voice:
             voice_json = self._voice.as_dict()
             ret[Profile.JsonKeys.VOICE_INFO] = voice_json

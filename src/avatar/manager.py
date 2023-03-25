@@ -1,16 +1,25 @@
 ''' Manages and performs operations on Avatars '''
 from avatar.profile import Profile
+from utils.image_utils import ImageUtils
 from typing import List
+from sanitize_filename import sanitize
 import glob
+import json
 import os
 import logging
 import shutil
 from pathlib import Path
+from dataclasses import dataclass
 
 logger = logging.getLogger(__file__)
 
 
 class Manager:
+    @dataclass
+    class Directories:
+        AVATARS = "avatars"
+        DRIVING_VIDEOS = "driving_videos"
+
     def __init__(self, avatar_dir: Path):
         self._root_dir: Path = Path(avatar_dir)
         self._avatars: List[Profile] = []
@@ -25,22 +34,38 @@ class Manager:
     def active_profile(self):
         return self._active_profile
 
+    @property
+    def avatar_dir(self) -> Path:
+        return self._root_dir.joinpath(Manager.Directories.AVATARS)
+
+    @property
+    def driving_videos_dir(self) -> Path:
+        return self._root_dir.joinpath(Manager.Directories.DRIVING_VIDEOS)
+
     @active_profile.setter
     def active_profile(self, profile: Profile):
         self._active_profile = profile
 
-    def create_new_profile(self, profile_path: str) -> Profile:
-        new_profile = Profile(os.path.join(self._root_dir, "avatars", profile_path))
-        new_profile.save()
+    @classmethod
+    def sanitize_name(cls, name: str) -> str:
+        ''' Returns a sanitized version of name '''
+        name = sanitize(name.lower())
+        name = name.replace(" ", "_")
+        return name
+
+    def create_new_profile(self, profile_name: str) -> Profile:
+        profile_path = self.avatar_dir.joinpath(Manager.sanitize_name(profile_name))
+        new_profile = Profile(profile_root_dir=profile_path)
+        new_profile.save(output_dir=profile_path, overwrite=False)
         return new_profile
 
     def delete_profile(self, profile: Profile) -> None:
-        if not self._root_dir in profile.directory.parents:
-            raise Exception("Not deleting from profile directory outside of avatar")
-        shutil.rmtree(profile.directory, ignore_errors=True)
+        profile_dir: Path = self.avatar_dir.joinpath(Path(profile.name))
+        shutil.rmtree(profile_dir)
 
-    def save_profile(self, profile: Profile) -> None:
-        pass
+    def save_profile(self, profile: Profile, overwrite: bool = False) -> None:
+        profile_path = os.path.join(self.avatar_dir, profile.name)
+        profile.save(output_dir=profile_path, overwrite=True)
 
     def refresh(self) -> None:
         ''' Updates the list of avatars '''
@@ -57,7 +82,7 @@ class Manager:
         profile_list: List[Profile] = []
         for profile_path in glob.glob(search_glob):
             try:
-                new_profile = Profile.from_json_file(profile_path)
+                new_profile = Profile.from_profile_directory(os.path.dirname(profile_path))
                 profile_list.append(new_profile)
             except Exception as e:
                 logger.warn(f"Failed to create profile from [{profile_path}] : {e}")

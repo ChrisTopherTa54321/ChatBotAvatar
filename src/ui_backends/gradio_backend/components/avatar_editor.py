@@ -1,5 +1,6 @@
 from ui_backends.gradio_backend.component import GradioComponent
 from ui_backends.gradio_backend.components.tts_settings import TtsSettings
+from ui_backends.gradio_backend.utils.event_relay import EventRelay
 from typing_extensions import override
 from typing import Any, Dict, Tuple, List
 import gradio as gr
@@ -18,7 +19,8 @@ class AvatarEditor(GradioComponent):
         self._ui_name_textbox: gr.Textbox = None
         self._ui_profile_image: gr.Image = None
         self._ui_voice_settings: TtsSettings = None
-        self._ui_update_trigger: gr.Checkbox = None
+        self._ui_event_refresh_trigger: Component = None
+
         self._ui_save_btn: gr.Button = None
         self._component: Component = None
         self._inputs: List[Component] = []
@@ -41,16 +43,20 @@ class AvatarEditor(GradioComponent):
             with gr.Row():
                 self._ui_save_btn = gr.Button("Save")
 
-        self._profile_fields = [self._ui_filename_textbox, self._ui_name_textbox, self.ui_profile_image]
-        self._outputs = [self._ui_filename_textbox, self._ui_name_textbox,
-                         self._ui_profile_image, self._ui_voice_settings.get_update_trigger()]
+        self._inputs = [self._ui_filename_textbox, self._ui_name_textbox, self.ui_profile_image]
+        self._outputs = [self._ui_filename_textbox, self._ui_name_textbox, self._ui_profile_image]
 
-        self._ui_update_trigger = gr.Checkbox(value=False, label="Update Trigger", visible=False)
+        refresh_components = [self._ui_filename_textbox, self._ui_name_textbox,
+                              self.ui_profile_image, self._ui_voice_settings.get_refresh_trigger()]
 
-        self._ui_update_trigger.change(fn=self._handle_update_trigger, inputs=self._outputs, outputs=self._outputs)
+        self._ui_event_refresh_trigger = EventRelay.wrap_event(
+            func=self._handle_refresh_trigger, inputs=refresh_components, outputs=refresh_components, name="AvatarEditorWrapped")
+
+        save_components = [self._ui_filename_textbox, self._ui_name_textbox, self._ui_profile_image]
+        save_components = self._ui_voice_settings.add_inputs(save_components)
 
         self._ui_save_btn.click(fn=self._handle_save_clicked,
-                                inputs=self._ui_voice_settings.add_inputs(self._profile_fields), outputs=[])
+                                inputs=save_components, outputs=[])
 
         self._component = component
         return self._component
@@ -64,25 +70,25 @@ class AvatarEditor(GradioComponent):
         pos = len(self._inputs)
         return (inputs[pos:], inputs[:pos])
 
-    def get_update_trigger(self) -> Component:
-        return self._ui_update_trigger
+    def get_refresh_trigger(self) -> Component:
+        return self._ui_event_refresh_trigger
 
-    def _handle_update_trigger(self, *args, **kwargs):
-        orig_filename, orig_name, orig_image, orig_updater = args
+    def _handle_refresh_trigger(self, *args, **kwargs):
+        orig_filename, orig_name, orig_image, voice_refresh_trigger = args
         self._ui_voice_settings.voice = self._profile.voice
-        # Outputs: name: str, profile: image, voice_settings_updater
-        image = ImageUtils.open_or_blank(self._profile.preview_image_path)
-        return (self._profile.directory, self._profile.name, image, not orig_updater)
+        # Outputs: name: str, profile: image, voice_refresh_trigger
+        image = self._profile.preview_image
+        return (self._profile.name, self._profile.friendly_name, image, not voice_refresh_trigger)
 
     def _handle_save_clicked(self, *args, **kwargs):
         args, consumed_inputs = self._ui_voice_settings.consume_inputs(args)
         voice = self._ui_voice_settings.create_from_inputs(consumed_inputs)
-        directory, name, profile_image = args
+        directory, friendly_name, profile_image = args
 
-        profile = Profile(profile_dir=directory, name=name)
-        profile.voice = voice
-        profile.preview_image = profile_image
-        Shared.getInstance().avatar_manager.save(profile)
+        self._profile.friendly_name = friendly_name
+        self._profile.voice = voice
+        self._profile.preview_image = profile_image
+        Shared.getInstance().avatar_manager.save_profile(self._profile, overwrite=True)
 
     def load_profile(self, profile: Profile):
         ''' Fills in the AvatarEditor settings from a Profile '''

@@ -1,12 +1,14 @@
-from ui_backends.gradio_backend.component import GradioComponent
-from typing_extensions import override
-from typing import Any, Dict, Tuple, List
+from typing import Any, Dict, List, Tuple
+
 import gradio as gr
 from gradio.components import Component
+from typing_extensions import override
 
+from tts import Tts
+from ui_backends.gradio_backend.component import GradioComponent
+from ui_backends.gradio_backend.utils.event_relay import EventRelay
 from utils.shared import Shared
 from utils.voice_factory import VoiceFactory
-from tts import Tts
 
 
 class TtsSettings(GradioComponent):
@@ -15,11 +17,12 @@ class TtsSettings(GradioComponent):
         self._ui_voice_style_dropdown: gr.Dropdown = None
         self._ui_pitch_textbox: gr.Textbox = None
         self._ui_rate_textbox: gr.Textbox = None
-        self._ui_update_trigger: gr.Checkbox = None
+        self._ui_event_refresh_trigger: Component = None
         self._voice: Tts.Voice = None
         self._component: Component = None
         self._inputs: List[Component] = []
         self._outputs: List[Component] = []
+        self._skip_change: int = 0
 
     @override
     def build_component(self) -> Component:
@@ -42,24 +45,33 @@ class TtsSettings(GradioComponent):
                 self._ui_pitch_textbox = gr.Textbox(label="Pitch")
                 self._ui_rate_textbox = gr.Textbox(label="Rate")
         self._component = component
-        self._ui_voice_dropdown.change(self._on_voice_name_change, inputs=[
-                                       self._ui_voice_dropdown], outputs=[self._ui_voice_style_dropdown])
-
-        self._ui_update_trigger = gr.Checkbox(value=False, visible=False)
 
         self._inputs = [self._ui_voice_dropdown, self._ui_voice_style_dropdown,
-                        self._ui_pitch_textbox, self._ui_rate_textbox, self._ui_update_trigger]
+                        self._ui_pitch_textbox, self._ui_rate_textbox]
         self._outputs = self._inputs.copy()
 
-        self._ui_update_trigger.change(fn=self._handle_update_trigger, inputs=self._inputs, outputs=self._inputs)
+        self._ui_event_refresh_trigger = EventRelay.wrap_event(
+            func=self._handle_refresh_trigger, inputs=self._inputs, outputs=self._outputs, name="TtsSettingsWrapped")
+
+        self._ui_voice_dropdown.change(self._on_voice_name_change, inputs=[
+                                       self._ui_voice_dropdown, self._ui_event_refresh_trigger], outputs=[self._ui_voice_style_dropdown, self._ui_event_refresh_trigger])
+
         return self._component
 
     # TODO: Standardize these triggers better. Pretty sure there is a bug here with update
-    def _handle_update_trigger(self, *args, **kwargs):
-        voice_name, voice_style, pitch, rate, update = args
+    def _handle_refresh_trigger(self, *args, **kwargs):
+        voice_name, voice_style, pitch, rate = args
         if not self.voice:
             self.voice = self.create_from_inputs(args)
-        return (self.voice.get_name(), self.voice.get_style(), self.voice.get_pitch(), self.voice.get_rate(), update)
+
+        if self._skip_change == 0:
+            self._skip_change = 1
+
+        # if self.self.voice.get_style(), == 2:
+        #     self._skip_change = 0
+            # styles_update = gr.Dropdown.update(choices=styles, value=self.voice.get_style())
+
+        return (self.voice.get_name(), self.voice.get_style(), self.voice.get_pitch(), self.voice.get_rate())
 
     @override
     def add_inputs(self, inputs: List[Component]) -> List[Component]:
@@ -72,12 +84,12 @@ class TtsSettings(GradioComponent):
 
         return (inputs, consumed_inputs)
 
-    def get_update_trigger(self) -> Component:
-        return self._ui_update_trigger
+    def get_refresh_trigger(self) -> Component:
+        return self._ui_event_refresh_trigger
 
     def create_from_inputs(self, inputs: List[Any]) -> Tts.Voice:
         ''' Given inputs from consume_inputs, return a configured voice'''
-        voice_name, voice_style, voice_pitch, voice_rate, _ = inputs
+        voice_name, voice_style, voice_pitch, voice_rate = inputs
         voice = VoiceFactory.get_voice(voice_name)
         voice.set_style(voice_style)
         if voice_pitch:
@@ -90,11 +102,16 @@ class TtsSettings(GradioComponent):
         # name, style, pitch, rate, update_trigger
         pass
 
-    def _on_voice_name_change(self, voice_name: str) -> Tuple[Dict]:
+    def _on_voice_name_change(self, voice_name: str, trigger_checkbox: bool) -> Tuple[Dict]:
         ''' Updates the Styles list when the Voice Name changes '''
         self._voice = VoiceFactory.get_voices().get(voice_name, None)
         styles = self._voice.get_styles_available()
-        return gr.Dropdown.update(choices=styles, interactive=True, value=styles[0])
+        if self._skip_change == 1:
+            trigger_checkbox = not trigger_checkbox
+            self._skip_change = 2
+        else:
+            self._skip_change = 0
+        return (gr.Dropdown.update(choices=styles, interactive=True, value=styles[0]), trigger_checkbox)
 
     @property
     def voice(self) -> Tts.Voice:
