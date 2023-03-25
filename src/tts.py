@@ -3,7 +3,9 @@ from __future__ import annotations
 import abc
 from abc import abstractmethod
 from typing import Optional, Tuple, List, Optional
+from serializeable import Serializable
 import numpy as np
+from dataclasses import dataclass
 
 
 class Tts(abc.ABC):
@@ -11,17 +13,26 @@ class Tts(abc.ABC):
     An instance of a TTS backend
     '''
 
-    class Voice(abc.ABC):
+    class Voice(Serializable):
         '''
         An instance of a Voice supported by TTS
         '''
+
+        @dataclass
+        class JsonKeys:
+            ''' Key names for the serializing '''
+            NAME: str = "name"
+            BACKEND: str = "backend"
+            STYLE: str = "style"
+            PITCH: str = "pitch"
+            RATE: str = "rate"
+
         @abstractmethod
         def get_name(self) -> str:
             '''
             Returns:
                 str: the name of the voice
             '''
-            pass
 
         @abstractmethod
         def get_styles_available(self) -> List[str]:
@@ -31,7 +42,6 @@ class Tts(abc.ABC):
             Returns:
                 List[str]: list of styles
             '''
-            pass
 
         @abstractmethod
         def get_style(self) -> str:
@@ -41,7 +51,6 @@ class Tts(abc.ABC):
             Returns:
                 str: current style
             '''
-            pass
 
         @abstractmethod
         def set_style(self, style: str) -> None:
@@ -51,7 +60,6 @@ class Tts(abc.ABC):
             Args:
                 style (str): style to use
             '''
-            pass
 
         @abstractmethod
         def set_pitch(self, pitch: str) -> None:
@@ -62,7 +70,15 @@ class Tts(abc.ABC):
             Args:
                 pitch (str): pitch string to use
             '''
-            pass
+
+        @abstractmethod
+        def get_pitch(self) -> str:
+            '''
+            Gets the voice's pitch modifier
+
+            Returns:
+                pitch: voice's current pitch modifier
+            '''
 
         @abstractmethod
         def set_rate(self, rate: str) -> None:
@@ -73,7 +89,15 @@ class Tts(abc.ABC):
             Args:
                 rate (str): rate string to use
             '''
-            pass
+
+        @abstractmethod
+        def get_rate(self) -> str:
+            '''
+            Gets the voice's rate modifier
+
+            Returns:
+                Rate: voice's current rate modifier
+            '''
 
         @abstractmethod
         def get_sampling_rate(self) -> int:
@@ -82,6 +106,14 @@ class Tts(abc.ABC):
 
             Returns:
                 int: audio sampling rate
+            '''
+        @abstractmethod
+        def get_backend_name(self) -> str:
+            '''
+            Returns the name of the Voice's backend
+
+            Returns:
+                str: backend name
             '''
 
     @abstractmethod
@@ -92,7 +124,6 @@ class Tts(abc.ABC):
         Returns:
             List[Tts.Voice]: list of voices
         '''
-        pass
 
     @abstractmethod
     def get_voice(self, name: str) -> Optional[Tts.Voice]:
@@ -102,7 +133,6 @@ class Tts(abc.ABC):
         Returns:
             Tts.Voice: voice if valid, otherwise None
         '''
-        pass
 
     @abstractmethod
     def synthesize(self, text: str, voice: Tts.Voice) -> Tuple[np.array, int]:
@@ -116,4 +146,3 @@ class Tts(abc.ABC):
         Returns:
             Tuple of (audio buffer data, sampling rate)
         '''
-        pass

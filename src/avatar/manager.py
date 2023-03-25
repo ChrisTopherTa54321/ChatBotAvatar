@@ -15,9 +15,9 @@ class Manager:
         self._driving_videos: List[str] = []
         self._active_profile: Profile = None
 
-        self.refresh()
-        if len(self._avatars) > 0:
-            self.active_profile = self._avatars[0]
+        # self.refresh()
+        # if len(self._avatars) > 0:
+        #     self.active_profile = self._avatars[0]
 
     @property
     def active_profile(self):
@@ -26,6 +26,11 @@ class Manager:
     @active_profile.setter
     def active_profile(self, profile: Profile):
         self._active_profile = profile
+
+    def create_new_profile(self, profile_path: str) -> Profile:
+        new_profile = Profile(os.path.join(self._root_dir, "avatars", profile_path))
+        new_profile.save()
+        return new_profile
 
     def refresh(self) -> None:
         ''' Updates the list of avatars '''
@@ -42,10 +47,10 @@ class Manager:
         profile_list: List[Profile] = []
         for profile_path in glob.glob(search_glob):
             try:
-                new_profile = Profile.from_json(profile_path)
+                new_profile = Profile.from_json_file(profile_path)
                 profile_list.append(new_profile)
             except Exception as e:
-                logger.warn(f"Failed to create profile from [{profile_path}]")
+                logger.warn(f"Failed to create profile from [{profile_path}] : {e}")
         return profile_list
 
     def _get_driving_videos(self, driving_videos_dir: str) -> List[str]:

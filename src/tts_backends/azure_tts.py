@@ -4,7 +4,7 @@ import os
 import azure.cognitiveservices.speech as speechsdk
 import numpy as np
 from io import BytesIO
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict, Any
 import wave
 import re
 from tts import Tts
@@ -15,7 +15,8 @@ logger = logging.getLogger(__file__)
 
 
 class AzureTts(Tts):
-    DEFAULT_STYLE = "general"
+    DEFAULT_STYLE: str = "general"
+    BACKEND_NAME: str = "azure_tts"
 
     def __init__(self, api_key: str, api_region: str, voice_locale: str = "en-US"):
         # Create configuration
@@ -67,6 +68,7 @@ class AzureTts(Tts):
         return speechsdk.SpeechSynthesizer(speech_config=self._speech_config)
 
     class Voice(Tts.Voice):
+
         def __init__(self, voice_info: speechsdk.VoiceInfo):
             self._voice_info: speechsdk.VoiceInfo = voice_info
             self._cur_style: str = self.get_styles_available()[0]
@@ -74,8 +76,27 @@ class AzureTts(Tts):
             self._rate: str = None
 
         @override
+        def from_dict(self, info: Dict[str, Any]) -> AzureTts.Voice:
+            new_voice: AzureTts.Voice = AzureTts.Voice()
+            return super().from_dict(info)
+
+        @override
+        def as_dict(self) -> Dict[str, Any]:
+            ret: Dict[str, Any] = {}
+            ret[AzureTts.Voice.JsonKeys.BACKEND] = AzureTts.BACKEND_NAME
+            ret[AzureTts.Voice.JsonKeys.NAME] = self.get_name()
+            ret[AzureTts.Voice.JsonKeys.STYLE] = self.get_style()
+            ret[AzureTts.Voice.JsonKeys.PITCH] = self._pitch
+            ret[AzureTts.Voice.JsonKeys.RATE] = self._rate
+            return ret
+
+        @override
         def get_name(self) -> str:
             return self._voice_info.local_name
+
+        @override
+        def get_backend_name(self) -> str:
+            return AzureTts.BACKEND_NAME
 
         @override
         def get_styles_available(self) -> List[str]:
@@ -97,8 +118,16 @@ class AzureTts(Tts):
             self._pitch = pitch
 
         @override
+        def get_pitch(self) -> str:
+            return self._pitch
+
+        @override
         def set_rate(self, rate: str) -> None:
             self._rate = rate
+
+        @override
+        def get_rate(self) -> str:
+            return self._rate
 
         @override
         def get_sampling_rate(self) -> int:

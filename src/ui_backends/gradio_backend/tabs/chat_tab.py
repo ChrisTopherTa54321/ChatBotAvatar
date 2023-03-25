@@ -12,20 +12,19 @@ from ui_backends.gradio_backend.tab import GradioTab
 from ui_backends.gradio_backend.components.tts_settings import TtsSettings
 from utils.tts_queue import TtsQueue
 from utils.shared import Shared
+from utils.voice_factory import VoiceFactory
 
 logger = logging.getLogger(__file__)
 
 
 class ChatTab(GradioTab):
-    def __init__(self, tts_queue: TtsQueue):
-        # todo: manage access to these
-        self._tts_queue = tts_queue
+    def __init__(self):
+        self._tts_queue: TtsQueue = None
 
         self._ui_chatbot: gr.Chatbot = None
         self._ui_state: gr.State = None
         self._ui_speak_textbox: gr.Textbox = None
         self._ui_speak_btn: gr.Button = None
-        # self._uiAutoPlay: gr.Checkbox = None
 
         self._ui_voice_settings: TtsSettings = None
 
@@ -84,7 +83,7 @@ class ChatTab(GradioTab):
         self._ui_speak_btn.click(self._handleSpeakButton,
                                  inputs=self._ui_voice_settings.add_inputs(
                                      [self._ui_state, self._ui_speak_textbox, self._ui_audio_trigger_relay]),
-                                 outputs=[self._ui_audio_trigger_relay])
+                                 outputs=self._ui_voice_settings.add_outputs([self._ui_audio_trigger_relay]))
 
         # Hack:
         # The 'AudioTriggerRelay' disconnects the Speak Button from the Audio Player. If the button output to
@@ -113,7 +112,7 @@ class ChatTab(GradioTab):
 
         tries = 2
 
-        while tries > 0:
+        while self._tts_queue and tries > 0:
             # Get any new audio since the last call
             new_audio_buffer, sampling_rate = self._tts_queue.get_new_audio()
             if len(new_audio_buffer) > 0:
@@ -124,6 +123,7 @@ class ChatTab(GradioTab):
             if self._tts_queue.is_done():
                 all_audio_buffer, sampling_rate = self._tts_queue.get_all_audio()
                 all_audio = (sampling_rate, all_audio_buffer)
+                self._tts_queue = None
             else:
                 all_audio = None
 
@@ -144,10 +144,14 @@ class ChatTab(GradioTab):
 
         args, voice_inputs = self._ui_voice_settings.consume_inputs(args)
         voice = self._ui_voice_settings.create_from_inputs(voice_inputs)
-
-        logger.info("handleSpeakButton pressed")
         state, response_text, relay_state = args
 
+        if self._tts_queue:
+            logger.warn("Already a TTS queue!")
+            return relay_state
+
+        tts_backend = VoiceFactory.get_backend(voice)
+        self._tts_queue = TtsQueue(tts=tts_backend)
         self._tts_queue.start_synthesis(response_text, voice)
         logger.info("Waiting for first samples...")
         success = self._tts_queue.wait_for_audio(timeout=240)

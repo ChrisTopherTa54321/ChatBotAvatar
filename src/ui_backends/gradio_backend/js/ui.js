@@ -6,6 +6,10 @@ function start_listen_for_audio_component_updates() {
     console.log("Started watching for audio changes");
 }
 
+function prompt_for_name() {
+    return prompt("Enter name");
+}
+
 function stop_listen_for_audio_component_updates() {
     tts_audio_observer.disconnect();
     console.log("Stopped watching for audio changes");

@@ -16,8 +16,6 @@ from ui_backends.gradio_backend.tab import GradioTab
 from ui_backends.gradio_backend.tabs.chat_tab import ChatTab
 from ui_backends.gradio_backend.tabs.avatar_tab import AvatarTab
 from ui_backends.gradio_backend.tabs.tools_tab import ToolsTab
-from avatar.manager import Manager
-from utils.tts_queue import TtsQueue
 
 from utils.shared import Shared
 
@@ -30,10 +28,9 @@ gradio_dir = os.path.join(script_dir, "gradio_backend")
 class GradioUi(Ui):
     def __init__(self, jobs: int = 3):
         self._app: gr.Blocks = None
-        self._tts_queue: TtsQueue = TtsQueue(tts=Shared.getInstance().tts)
         self._job_cnt_arg = jobs
 
-        self._chat_tab: ChatTab = ChatTab(tts_queue=self._tts_queue)
+        self._chat_tab: ChatTab = ChatTab()
         self._avatar_tab: AvatarTab = AvatarTab()
         self._tools_tab: ToolsTab = ToolsTab()
 
