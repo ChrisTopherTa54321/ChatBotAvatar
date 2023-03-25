@@ -51,13 +51,21 @@ class Profile(Serializable):
         output_dir = Path(output_dir)
         os.makedirs(output_dir, exist_ok=overwrite)
         data = self.as_dict()
-        if self._preview_image is not None:
-            ImageUtils.copy_or_save(self.preview_image, os.path.join(output_dir, Profile.Filenames.PREVIEW))
+        ImageUtils.copy_or_save(self.preview_image, os.path.join(output_dir, Profile.Filenames.PREVIEW))
         with open(os.path.join(output_dir, Profile.Filenames.JSON), "w") as fhndl:
             json.dump(data, fhndl)
 
     @classmethod
     def from_profile_directory(cls, profile_directory: Path) -> Profile:
+        '''
+        Create a Profile from a profile directory
+
+        Args:
+            profile_directory (Path): path to profile directory
+
+        Returns:
+            Profile: profile initialized from the given directory
+        '''
         profile_json_path = os.path.join(profile_directory, Profile.Filenames.JSON)
         with open(profile_json_path, 'r') as fhndl:
             data = json.load(fhndl)
@@ -87,7 +95,7 @@ class Profile(Serializable):
 
     @preview_image.setter
     def preview_image(self, image: Union[np.ndarray, Path]):
-        self._preview_image = ImageUtils.image_data(image)
+        self._preview_image = ImageUtils.image_data(image) if image is not None else None
 
     @property
     def voice(self) -> Tts.Voice:

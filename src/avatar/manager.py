@@ -65,7 +65,7 @@ class Manager:
 
     def save_profile(self, profile: Profile, overwrite: bool = False) -> None:
         profile_path = os.path.join(self.avatar_dir, profile.name)
-        profile.save(output_dir=profile_path, overwrite=True)
+        profile.save(output_dir=profile_path, overwrite=overwrite)
 
     def refresh(self) -> None:
         ''' Updates the list of avatars '''

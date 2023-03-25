@@ -9,6 +9,9 @@ from ui_backends.gradio_backend.component import GradioComponent
 from ui_backends.gradio_backend.utils.event_relay import EventRelay
 from utils.shared import Shared
 from utils.voice_factory import VoiceFactory
+import logging
+
+logger = logging.getLogger(__file__)
 
 
 class TtsSettings(GradioComponent):
@@ -22,7 +25,6 @@ class TtsSettings(GradioComponent):
         self._component: Component = None
         self._inputs: List[Component] = []
         self._outputs: List[Component] = []
-        self._skip_change: int = 0
 
     @override
     def build_component(self) -> Component:
@@ -58,19 +60,7 @@ class TtsSettings(GradioComponent):
 
         return self._component
 
-    # TODO: Standardize these triggers better. Pretty sure there is a bug here with update
     def _handle_refresh_trigger(self, *args, **kwargs):
-        voice_name, voice_style, pitch, rate = args
-        if not self.voice:
-            self.voice = self.create_from_inputs(args)
-
-        if self._skip_change == 0:
-            self._skip_change = 1
-
-        # if self.self.voice.get_style(), == 2:
-        #     self._skip_change = 0
-            # styles_update = gr.Dropdown.update(choices=styles, value=self.voice.get_style())
-
         return (self.voice.get_name(), self.voice.get_style(), self.voice.get_pitch(), self.voice.get_rate())
 
     @override
@@ -104,13 +94,11 @@ class TtsSettings(GradioComponent):
 
     def _on_voice_name_change(self, voice_name: str, trigger_checkbox: bool) -> Tuple[Dict]:
         ''' Updates the Styles list when the Voice Name changes '''
+        if self._voice and self._voice.get_name() == voice_name:
+            logger.info(f"Voice name didn't change: {voice_name}")
+            return (gr.Dropdown.update(), trigger_checkbox)
         self._voice = VoiceFactory.get_voices().get(voice_name, None)
         styles = self._voice.get_styles_available()
-        if self._skip_change == 1:
-            trigger_checkbox = not trigger_checkbox
-            self._skip_change = 2
-        else:
-            self._skip_change = 0
         return (gr.Dropdown.update(choices=styles, interactive=True, value=styles[0]), trigger_checkbox)
 
     @property
