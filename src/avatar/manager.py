@@ -1,15 +1,16 @@
 ''' Manages and performs operations on Avatars '''
-from avatar.profile import Profile
-from utils.image_utils import ImageUtils
-from typing import List
-from sanitize_filename import sanitize
 import glob
-import json
-import os
 import logging
+import os
 import shutil
-from pathlib import Path
 from dataclasses import dataclass
+from pathlib import Path
+from typing import List
+
+from sanitize_filename import sanitize
+
+from avatar.profile import Profile
+from avatar.video_info import VideoInfo
 
 logger = logging.getLogger(__file__)
 
@@ -23,7 +24,7 @@ class Manager:
     def __init__(self, avatar_dir: Path):
         self._root_dir: Path = Path(avatar_dir)
         self._avatars: List[Profile] = []
-        self._driving_videos: List[str] = []
+        self._driving_videos: List[VideoInfo] = []
 
     @property
     def avatar_dir(self) -> Path:
@@ -63,6 +64,9 @@ class Manager:
         ''' Returns a list of available avatars '''
         return self._avatars.copy()
 
+    def list_driving_videos(self) -> List[VideoInfo]:
+        return self._driving_videos
+
     def _get_profiles(self, avatars_dir: str) -> List[Profile]:
         ''' Returns a list of profiles in an Avatar directory '''
         search_glob: str = os.path.join(avatars_dir, "*", "profile.json")
@@ -75,7 +79,7 @@ class Manager:
                 logger.warn(f"Failed to create profile from [{profile_path}] : {e}")
         return profile_list
 
-    def _get_driving_videos(self, driving_videos_dir: str) -> List[str]:
+    def _get_driving_videos(self, driving_videos_dir: str) -> List[VideoInfo]:
         ''' Returns a list of videos in the driving_videos directory '''
         valid_exts = [".mp4", ".mkv", ".avi"]
-        return [path for path in os.listdir(driving_videos_dir) if os.path.splitext(path.lower())[1] in valid_exts]
+        return [VideoInfo(video_path=os.path.join(driving_videos_dir, file)) for file in os.listdir(driving_videos_dir) if os.path.splitext(file.lower())[1] in valid_exts]

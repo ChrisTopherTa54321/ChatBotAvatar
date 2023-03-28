@@ -1,6 +1,6 @@
 ''' Chat interface tab '''
 import logging
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Any
 
 import gradio as gr
 import numpy as np
@@ -77,10 +77,6 @@ class ChatTab(GradioTab):
 
         self._ui_speak_btn.click(fn=self._clear_component, inputs=[], outputs=[self._ui_streaming_audio])
         self._ui_speak_btn.click(fn=None, _js="start_listen_for_audio_component_updates")
-        # self._ui_speak_btn.click(self._handleSpeakButton,
-        #                          inputs=self._ui_voice_settings.add_inputs(
-        #                              [self._ui_state, self._ui_speak_textbox, self._ui_audio_trigger_relay]),
-        #                          outputs=self._ui_voice_settings.add_outputs([self._ui_audio_trigger_relay]))
         self._ui_speak_btn.click(fn=self._handleSpeakButton, inputs=[
                                  self._ui_speak_textbox, self._ui_audio_trigger_relay, self._ui_voice_settings.instance_data], outputs=[self._ui_audio_trigger_relay])
 

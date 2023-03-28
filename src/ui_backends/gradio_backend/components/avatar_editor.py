@@ -1,6 +1,7 @@
 from __future__ import annotations
 from ui_backends.gradio_backend.component import GradioComponent
 from ui_backends.gradio_backend.components.tts_settings import TtsSettings
+from ui_backends.gradio_backend.components.video_gallery import VideoGallery
 from ui_backends.gradio_backend.utils.event_relay import EventRelay
 from typing_extensions import override
 from typing import Any, Dict, Tuple, List
@@ -24,6 +25,7 @@ class AvatarEditor(GradioComponent):
         self._ui_filename_textbox: gr.Textbox = None
         self._ui_name_textbox: gr.Textbox = None
         self._ui_profile_image: gr.Image = None
+        self._ui_driving_video_gallery: VideoGallery = None
         self._ui_voice_settings: TtsSettings = None
         self._relay_update_ui: Component = None
         self._ui_state: gr.State = None
@@ -44,7 +46,7 @@ class AvatarEditor(GradioComponent):
                     self._ui_profile_image = gr.Image(label="Profile Image")
                 with gr.Column(scale=2):
                     self._ui_voice_settings = TtsSettings()
-
+            self._ui_driving_video_gallery = VideoGallery()
             with gr.Row():
                 self._ui_save_btn = gr.Button("Save")
 
