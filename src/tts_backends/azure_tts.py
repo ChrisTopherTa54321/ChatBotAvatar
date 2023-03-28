@@ -63,8 +63,7 @@ class AzureTts(Tts):
 
         @override
         def from_dict(self, info: Dict[str, Any]) -> AzureTts.Voice:
-            new_voice: AzureTts.Voice = AzureTts.Voice()
-            return super().from_dict(info)
+            raise NotImplementedError()
 
         @override
         def as_dict(self) -> Dict[str, Any]:
