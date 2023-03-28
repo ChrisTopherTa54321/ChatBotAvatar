@@ -6,7 +6,7 @@ import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List
-
+import traceback
 from sanitize_filename import sanitize
 
 from avatar.profile import Profile
@@ -77,9 +77,9 @@ class Manager:
                 profile_list.append(new_profile)
             except Exception as e:
                 logger.warn(f"Failed to create profile from [{profile_path}] : {e}")
+                traceback.print_exception(e)
         return profile_list
 
     def _get_driving_videos(self, driving_videos_dir: str) -> List[VideoInfo]:
         ''' Returns a list of videos in the driving_videos directory '''
-        valid_exts = [".mp4", ".mkv", ".avi"]
-        return [VideoInfo(video_path=os.path.join(driving_videos_dir, file)) for file in os.listdir(driving_videos_dir) if os.path.splitext(file.lower())[1] in valid_exts]
+        return VideoInfo.list_directory(driving_videos_dir)

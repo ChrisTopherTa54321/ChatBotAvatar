@@ -6,7 +6,7 @@ import os
 from dataclasses import dataclass
 from io import TextIOWrapper
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union, List
 
 import numpy as np
 from PIL import Image
@@ -16,6 +16,7 @@ from serializeable import Serializable
 from tts import Tts
 from utils.voice_factory import VoiceFactory
 from utils.image_utils import ImageUtils
+from avatar.video_info import VideoInfo
 
 
 class Profile(Serializable):
@@ -25,6 +26,7 @@ class Profile(Serializable):
     class Filenames:
         JSON: str = "profile.json"
         PREVIEW: str = "profile.png"
+        MOTION_MATCHED_DIR: str = "motion_matched"
 
     @dataclass
     class JsonKeys:
@@ -39,6 +41,7 @@ class Profile(Serializable):
         self._friendly_name: str = friendly_name
         self._preview_image: Optional[np.ndarray] = None
         self._voice: Tts.Voice = None
+        self._motion_matched_videos: List[VideoInfo] = self._refresh_matched_videos()
 
     def save(self, output_dir: Path, overwrite: bool = True):
         '''
@@ -54,6 +57,9 @@ class Profile(Serializable):
         ImageUtils.copy_or_save(self.preview_image, os.path.join(output_dir, Profile.Filenames.PREVIEW))
         with open(os.path.join(output_dir, Profile.Filenames.JSON), "w") as fhndl:
             json.dump(data, fhndl)
+
+    def _refresh_matched_videos(self) -> List[VideoInfo]:
+        return VideoInfo.list_directory(os.path.join(self._root_dir, Profile.Filenames.MOTION_MATCHED_DIR))
 
     @classmethod
     def from_profile_directory(cls, profile_directory: Path) -> Profile:
@@ -97,6 +103,9 @@ class Profile(Serializable):
     def preview_image(self, image: Union[np.ndarray, Path]):
         self._preview_image = ImageUtils.image_data(image) if image is not None else None
 
+    def list_motion_matched_videos(self) -> List[VideoInfo]:
+        return self._motion_matched_videos.copy()
+
     @property
     def voice(self) -> Tts.Voice:
         return self._voice
@@ -117,6 +126,7 @@ class Profile(Serializable):
         preview_image_path = info.get(Profile.JsonKeys.PREVIEW_IMAGE, None)
         if preview_image_path:
             self._preview_image = ImageUtils.open_or_blank(self._root_dir.joinpath(preview_image_path))
+        self._motion_matched_videos = self._refresh_matched_videos()
         return self
 
     @override

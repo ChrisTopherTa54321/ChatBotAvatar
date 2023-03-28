@@ -1,14 +1,16 @@
 ''' Class representing a video file '''
+from __future__ import annotations
 from pathlib import Path
 from PIL import Image
 from utils.image_utils import ImageUtils
-from typing import Optional
+from typing import Optional, List
 import cv2
 import os
 
 
 class VideoInfo():
     IMG_EXTS = ['.png', '.jpg']
+    VID_EXTS = ['.mkv', '.mp4', '.gif', '.avi']
 
     def __init__(self, video_path: Path):
         self._path: Path = video_path
@@ -57,3 +59,11 @@ class VideoInfo():
                     base, _ = os.path.splitext(self._path)
                     preview_name = base + VideoInfo.IMG_EXTS[0]
                 img.save(preview_name)
+
+    @classmethod
+    def list_directory(self, path: Path, valid_exts: List[str] = None) -> List[VideoInfo]:
+        ''' Returns a list of videos in the driving_videos directory '''
+        if not os.path.isdir(path):
+            return []
+        valid_exts = valid_exts or VideoInfo.VID_EXTS
+        return [VideoInfo(video_path=os.path.join(path, file)) for file in os.listdir(path) if os.path.splitext(file.lower())[1] in valid_exts]

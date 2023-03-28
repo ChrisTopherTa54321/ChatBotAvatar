@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from utils.shared import Shared
 from utils.image_utils import ImageUtils
 from avatar.profile import Profile
+from avatar.video_info import VideoInfo
 from tts import Tts
 
 
@@ -21,11 +22,15 @@ class AvatarEditor(GradioComponent):
     class StateData:
         profile: Profile = None
 
-    def __init__(self):
+    def __init__(self, label: str = "Avatar Editor", open: bool = False):
         self._ui_filename_textbox: gr.Textbox = None
         self._ui_name_textbox: gr.Textbox = None
         self._ui_profile_image: gr.Image = None
-        self._ui_driving_video_gallery: VideoGallery = None
+        self._ui_motion_matched_gallery: VideoGallery = None
+
+        self._ui_create_avail_driving_video_gallery: VideoGallery = None
+        self._ui_create_driving_src_image: gr.Image = None
+
         self._ui_voice_settings: TtsSettings = None
         self._relay_update_ui: Component = None
         self._ui_state: gr.State = None
@@ -34,10 +39,12 @@ class AvatarEditor(GradioComponent):
         self._inputs: List[Component] = []
         self._outputs: List[Component] = []
 
-        self._build_component()
+        self._build_component(label=label, open=open)
 
-    def _build_component(self):
-        with gr.Accordion(label="Avatar Editor"):
+    def _build_component(self, label: str, open: bool):
+        self._ui_state = gr.State(value=AvatarEditor.StateData)
+
+        with gr.Accordion(label=label, open=open):
             with gr.Row():
                 self._ui_filename_textbox = gr.Textbox(interactive=False)
                 self._ui_name_textbox = gr.Textbox(placeholder="Avatar Name")
@@ -46,11 +53,22 @@ class AvatarEditor(GradioComponent):
                     self._ui_profile_image = gr.Image(label="Profile Image")
                 with gr.Column(scale=2):
                     self._ui_voice_settings = TtsSettings()
-            self._ui_driving_video_gallery = VideoGallery()
+
+            with gr.Accordion(label="Motion Matched Videos"):
+                with gr.Tab("Existing"):
+                    self._ui_motion_matched_gallery = VideoGallery(label="Existing Motion Matched Videos", list_getter=self._get_motion_matched_video, list_getter_inputs=[
+                                                                   self.instance_data])
+                with gr.Tab("Create New"):
+                    gr.Markdown("Select a driving video to motion match to")
+                    with gr.Row():
+                        with gr.Column(scale=1):
+                            self._ui_create_avail_driving_video_gallery = VideoGallery(
+                                label="", list_getter=self._get_driving_videos)
+                        with gr.Column(scale=1):
+                            self._ui_create_driving_src_image = gr.Image()
+
             with gr.Row():
                 self._ui_save_btn = gr.Button("Save")
-
-        self._ui_state = gr.State(value=AvatarEditor.StateData)
 
         self._inputs = [self._ui_filename_textbox, self._ui_name_textbox, self.ui_profile_image]
         self._outputs = [self._ui_filename_textbox, self._ui_name_textbox, self._ui_profile_image]
@@ -95,6 +113,12 @@ class AvatarEditor(GradioComponent):
         editor_state_data.profile.preview_image = profile_image
         editor_state_data.profile.voice = voice_state_data.voice
         Shared.getInstance().avatar_manager.save_profile(editor_state_data.profile, overwrite=True)
+
+    def _get_driving_videos(self, gallery_data: VideoGallery.StateData) -> List[VideoInfo]:
+        return Shared.getInstance().avatar_manager.list_driving_videos().copy()
+
+    def _get_motion_matched_video(self, gallery_data: VideoGallery.StateData, editor_data: AvatarEditor.StateData) -> List[VideoInfo]:
+        return editor_data.profile.list_motion_matched_videos()
 
     @property
     def ui_name_textbox(self) -> gr.Textbox:
