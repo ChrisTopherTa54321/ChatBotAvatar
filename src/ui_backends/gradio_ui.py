@@ -12,6 +12,8 @@ from typing_extensions import override
 from chat import Chat
 from tts import Tts
 from ui import Ui
+from utils.shared import Shared
+from ui_backends.gradio_backend.utils.app_data import AppData
 from ui_backends.gradio_backend.tab import GradioTab
 from ui_backends.gradio_backend.tabs.chat_tab import ChatTab
 from ui_backends.gradio_backend.tabs.avatar_tab import AvatarTab
@@ -42,6 +44,7 @@ class GradioUi(Ui):
 
     def _buildInterface(self):
         with gr.Blocks(analytics_enabled=False) as app:
+            AppData.get_instance().app = app
             for name, tab in self._tabs.items():
                 with gr.Tab(name):
                     tab.build_ui()

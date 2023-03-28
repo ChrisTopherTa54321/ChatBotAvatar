@@ -81,7 +81,8 @@ class ChatTab(GradioTab):
         #                          inputs=self._ui_voice_settings.add_inputs(
         #                              [self._ui_state, self._ui_speak_textbox, self._ui_audio_trigger_relay]),
         #                          outputs=self._ui_voice_settings.add_outputs([self._ui_audio_trigger_relay]))
-        self._ui_speak_btn.click(fn=self._handleSpeakButton, inputs=[self._ui_voice_settings.instance_data, ])
+        self._ui_speak_btn.click(fn=self._handleSpeakButton, inputs=[
+                                 self._ui_speak_textbox, self._ui_audio_trigger_relay, self._ui_voice_settings.instance_data], outputs=[self._ui_audio_trigger_relay])
 
         # Hack:
         # The 'AudioTriggerRelay' disconnects the Speak Button from the Audio Player. If the button output to
@@ -135,20 +136,14 @@ class ChatTab(GradioTab):
         logger.warning("HandleRelayTrigger called but no audio found!")
         return None, None
 
-    def _handleSpeakButton(self, *args, **kwargs) -> Tuple[int, np.array]:
+    def _handleSpeakButton(self, prompt_text: str, relay_state: bool, tts_instance_data: TtsSettings.StateData) -> Tuple[int, np.array]:
         ''' Kicks off speech synthesis, blocks until first samples arrive '''
-
-        args, voice_inputs = self._ui_voice_settings.consume_inputs(args)
-        voice = self._ui_voice_settings.create_from_inputs(voice_inputs)
-        response_text, relay_state = args
-
         if self._tts_queue:
             logger.warn("Already a TTS queue!")
             return relay_state
 
-        tts_backend = VoiceFactory.get_backend(voice)
-        self._tts_queue = TtsQueue(tts=tts_backend)
-        self._tts_queue.start_synthesis(response_text, voice)
+        self._tts_queue = TtsQueue()
+        self._tts_queue.start_synthesis(prompt_text, tts_instance_data.voice)
         logger.info("Waiting for first samples...")
         success = self._tts_queue.wait_for_audio(timeout=240)
 

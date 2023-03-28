@@ -8,7 +8,7 @@ from typing_extensions import override
 from tts import Tts
 from ui_backends.gradio_backend.component import GradioComponent
 from ui_backends.gradio_backend.utils.event_relay import EventRelay
-from utils.shared import Shared
+from ui_backends.gradio_backend.utils.app_data import AppData
 from utils.voice_factory import VoiceFactory
 from dataclasses import dataclass
 import logging
@@ -68,6 +68,8 @@ class TtsSettings(GradioComponent):
                                       self._ui_pitch_textbox, self.instance_data], outputs=[])
         self._ui_rate_textbox.change(self._on_rate_change, inputs=[
                                      self._ui_rate_textbox, self.instance_data], outputs=[])
+
+        AppData.get_instance().app.load(fn=self._read_current_ui, inputs=refresh_inputs)
 
     def _handle_refresh_trigger(self, voice_name: str, voice_style: str, voice_pitch: str, voice_rate: str, state_data: TtsSettings.StateData):
         return (state_data.voice.get_name(), state_data.voice.get_style(), state_data.voice.get_pitch(), state_data.voice.get_rate())

@@ -116,6 +116,18 @@ class Tts(abc.ABC):
                 str: backend name
             '''
 
+        @abstractmethod
+        def synthesize(self, text: str) -> Tuple[np.array, int]:
+            '''
+            Generate audio for the given text
+
+            Args:
+                text (str): text to synthesize
+
+            Returns:
+                Tuple of (audio buffer data, sampling rate)
+            '''
+
     @abstractmethod
     def get_voice_list(self) -> List[Tts.Voice]:
         '''
@@ -132,17 +144,4 @@ class Tts(abc.ABC):
 
         Returns:
             Tts.Voice: voice if valid, otherwise None
-        '''
-
-    @abstractmethod
-    def synthesize(self, text: str, voice: Tts.Voice) -> Tuple[np.array, int]:
-        '''
-        Generate audio for the given text and voice
-
-        Args:
-            text (str): text to synthesize
-            voice (Tts.Voice): voice configuration to use
-
-        Returns:
-            Tuple of (audio buffer data, sampling rate)
         '''

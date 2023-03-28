@@ -32,7 +32,7 @@ class TtsQueue:
         cancel_event: Event
         workq: Queue
         lock: Lock
-        voice: str
+        voice: Tts.Voice
 
     @dataclass
     class WorkQueueItem:
@@ -44,7 +44,7 @@ class TtsQueue:
         data: np.array
         sample_rate: int
 
-    def __init__(self, tts: Tts, chunk_word_cnt: int = 256, grow_chunks: bool = True, jobs: int = 4):
+    def __init__(self, chunk_word_cnt: int = 256, grow_chunks: bool = True, jobs: int = 4):
         '''
         Initialize a TtsQueue
 
@@ -54,7 +54,6 @@ class TtsQueue:
             grow_chunks (bool, optional): if True, start with a very small chunk size and grow it up to chunk_word_cnt. This gets early audio out quicker
             jobs (int, optional): number of chunks to generate at a time
         '''
-        self._tts: Tts = tts
         self._min_chunk_words: int = chunk_word_cnt
         self._cur_chunk_words: int = chunk_word_cnt
 
@@ -210,7 +209,7 @@ class TtsQueue:
                 logger.info(f"Worker {worker_id} got work item: {text_to_speak}")
                 start = time.time()
                 try:
-                    audio_data, sample_rate = self._tts.synthesize(text=text_to_speak, voice=params.voice)
+                    audio_data, sample_rate = params.voice.synthesize(text=text_to_speak)
                 except Exception as e:
                     traceback.print_exception(e)
                     logger.error(f"Synthesize Error: {e}")

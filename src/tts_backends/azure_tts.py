@@ -30,7 +30,7 @@ class AzureTts(Tts):
 
         synthesizer = self._get_synthesizer()
         voices = synthesizer.get_voices_async(locale=voice_locale).get().voices
-        self._voices: List[AzureTts.Voice] = [AzureTts.Voice(voice_info=voice) for voice in voices]
+        self._voices: List[AzureTts.Voice] = [AzureTts.Voice(tts_inst=self, voice_info=voice) for voice in voices]
 
     @override
     def get_voice_list(self) -> List[Tts.Voice]:
@@ -43,21 +43,6 @@ class AzureTts(Tts):
             return matches[0]
         return None
 
-    @override
-    def synthesize(self, text: str, voice: AzureTts.Voice) -> Tuple[np.array, int]:
-        ssml = voice._buildSsml(text)
-        synthesizer: speechsdk.SpeechSynthesizer = self._get_synthesizer()
-        result = synthesizer.speak_ssml_async(ssml).get()
-        if not result.audio_data:
-            logger.warn(f"Failed to synthesize audio: {result.cancellation_details.error_details}")
-            return np.array([]), 0
-        resultData: BytesIO = BytesIO(result.audio_data)
-        waveFile = wave.open(resultData)
-        waveData: bytes = waveFile.readframes(waveFile.getnframes())
-        waveRate: int = waveFile.getframerate()
-
-        return np.frombuffer(waveData, dtype=np.int16), waveRate
-
     def _get_synthesizer(self) -> speechsdk.SpeechSynthesizer:
         '''
         Create a SpeechSynthesizer with the current configuration
@@ -69,11 +54,12 @@ class AzureTts(Tts):
 
     class Voice(Tts.Voice):
 
-        def __init__(self, voice_info: speechsdk.VoiceInfo):
+        def __init__(self, tts_inst: AzureTts, voice_info: speechsdk.VoiceInfo):
             self._voice_info: speechsdk.VoiceInfo = voice_info
             self._cur_style: str = self.get_styles_available()[0]
             self._pitch: str = None
             self._rate: str = None
+            self._tts: AzureTts = tts_inst
 
         @override
         def from_dict(self, info: Dict[str, Any]) -> AzureTts.Voice:
@@ -89,6 +75,21 @@ class AzureTts(Tts):
             ret[AzureTts.Voice.JsonKeys.PITCH] = self._pitch
             ret[AzureTts.Voice.JsonKeys.RATE] = self._rate
             return ret
+
+        @override
+        def synthesize(self, text: str) -> Tuple[np.array, int]:
+            ssml = self._buildSsml(text)
+            synthesizer: speechsdk.SpeechSynthesizer = self._tts._get_synthesizer()
+            result = synthesizer.speak_ssml_async(ssml).get()
+            if not result.audio_data:
+                logger.warn(f"Failed to synthesize audio: {result.cancellation_details.error_details}")
+                return np.array([]), 0
+            resultData: BytesIO = BytesIO(result.audio_data)
+            waveFile = wave.open(resultData)
+            waveData: bytes = waveFile.readframes(waveFile.getnframes())
+            waveRate: int = waveFile.getframerate()
+
+            return np.frombuffer(waveData, dtype=np.int16), waveRate
 
         @override
         def get_name(self) -> str:

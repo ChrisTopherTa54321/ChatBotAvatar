@@ -9,6 +9,7 @@ from tts import Tts
 from ui import Ui
 from avatar.manager import Manager
 from utils.voice_factory import VoiceFactory
+from typing import Dict, Any, Type
 
 
 class Shared:
@@ -22,6 +23,8 @@ class Shared:
         self._voice_factory: VoiceFactory = None
         self._ui: Ui = None
         self._chat: Chat = None
+
+        self._data: Dict[Any, Any] = {}
 
         self._avatar_manager: Manager = Manager(avatar_dir=self._args.avatar_dir)
 
@@ -83,6 +86,9 @@ class Shared:
             self._args = self._parse_args()
         return self._args
 
+    def get_data(self, key: Any, class_type: Type) -> Any:
+        return self._data.setdefault(key, class_type())
+
     @property
     def data_dir(self):
         return os.path.join(self.root_dir, self.args.data_dir)
@@ -98,10 +104,6 @@ class Shared:
     @property
     def image_gen(self) -> ImageGen:
         return self._image_gen
-
-    # @property
-    # def tts(self) -> Tts:
-    #     return self._tts
 
     @property
     def chat(self) -> Chat:
