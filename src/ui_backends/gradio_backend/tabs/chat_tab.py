@@ -54,7 +54,6 @@ class ChatTab(GradioTab):
         with gr.Row():
             self._ui_speak_btn = gr.Button("Speak")
             self._ui_voice_settings = TtsSettings()
-            self._ui_voice_settings.build_component()
 
         # Hidden helpers for audio chunking
         with gr.Group():

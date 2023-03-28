@@ -79,7 +79,6 @@ class ToolsTab(GradioTab):
                 self._ui_lip_sync_output_video = gr.Video(label="Lip Sync Output")
 
         self._ui_image_gen = ImageGenerator()
-        self._ui_image_gen.build_component()
 
         self._ui_lip_sync_btn.click(fn=self._handle_lip_sync_clicked, inputs=[
                                     self._ui_lip_sync_audio, self._ui_lip_sync_input], outputs=[self._ui_lip_sync_output_video])

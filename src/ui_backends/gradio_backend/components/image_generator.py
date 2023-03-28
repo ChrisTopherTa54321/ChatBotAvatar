@@ -20,9 +20,10 @@ class ImageGenerator(GradioComponent):
         self._inputs: List[Component] = []
         self._outputs: List[Component] = []
 
-    @override
-    def build_component(self) -> Component:
-        with gr.Accordion(label="Image Generator") as component:
+        self._build_component()
+
+    def _build_component(self):
+        with gr.Accordion(label="Image Generator"):
             with gr.Row():
                 self._ui_image_out = gr.Image(label="Output", interactive=False).style(height=256, width=256)
             with gr.Row():
@@ -39,8 +40,6 @@ class ImageGenerator(GradioComponent):
 
         self._ui_image_txt2img_btn.click(fn=self._handle_image_gen_clicked,
                                          inputs=self._inputs, outputs=self._ui_image_out)
-
-        return self._component
 
     @override
     def add_inputs(self, inputs: List[Component]) -> List[Component]:

@@ -22,12 +22,13 @@ class TtsSettings(GradioComponent):
         self._ui_rate_textbox: gr.Textbox = None
         self._ui_event_refresh_trigger: Component = None
         self._voice: Tts.Voice = None
-        self._component: Component = None
         self._inputs: List[Component] = []
         self._outputs: List[Component] = []
 
+        self._build_component()
+
     @override
-    def build_component(self) -> Component:
+    def _build_component(self):
         voice_map = VoiceFactory.get_voices()
         voice_name_list = sorted(voice_map.keys())
         if len(voice_name_list) > 0:
@@ -46,7 +47,6 @@ class TtsSettings(GradioComponent):
             with gr.Row():
                 self._ui_pitch_textbox = gr.Textbox(label="Pitch")
                 self._ui_rate_textbox = gr.Textbox(label="Rate")
-        self._component = component
 
         self._inputs = [self._ui_voice_dropdown, self._ui_voice_style_dropdown,
                         self._ui_pitch_textbox, self._ui_rate_textbox]
@@ -57,8 +57,6 @@ class TtsSettings(GradioComponent):
 
         self._ui_voice_dropdown.change(self._on_voice_name_change, inputs=[
                                        self._ui_voice_dropdown, self._ui_event_refresh_trigger], outputs=[self._ui_voice_style_dropdown, self._ui_event_refresh_trigger])
-
-        return self._component
 
     def _handle_refresh_trigger(self, *args, **kwargs):
         return (self.voice.get_name(), self.voice.get_style(), self.voice.get_pitch(), self.voice.get_rate())

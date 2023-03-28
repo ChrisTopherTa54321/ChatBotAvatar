@@ -39,7 +39,6 @@ class AvatarTab(GradioTab):
             self._ui_del_btn = gr.Button("Delete")
         with gr.Row():
             self._ui_avatar_editor = AvatarEditor()
-            self._ui_avatar_editor.build_component()
 
         hidden_name_box: gr.Textbox = gr.Textbox(visible=False)
         self._ui_new_btn.click(fn=self._handle_new_avatar_clicked,

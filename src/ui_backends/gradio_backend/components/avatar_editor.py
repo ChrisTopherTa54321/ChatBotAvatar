@@ -22,14 +22,14 @@ class AvatarEditor(GradioComponent):
         self._ui_event_refresh_trigger: Component = None
 
         self._ui_save_btn: gr.Button = None
-        self._component: Component = None
         self._inputs: List[Component] = []
         self._outputs: List[Component] = []
         self._profile: Profile = None
 
-    @override
-    def build_component(self) -> Component:
-        with gr.Accordion(label="Avatar Editor") as component:
+        self._build_component()
+
+    def _build_component(self):
+        with gr.Accordion(label="Avatar Editor"):
             with gr.Row():
                 self._ui_filename_textbox = gr.Textbox(interactive=False)
                 self._ui_name_textbox = gr.Textbox(placeholder="Avatar Name")
@@ -38,7 +38,6 @@ class AvatarEditor(GradioComponent):
                     self._ui_profile_image = gr.Image(label="Profile Image")
                 with gr.Column(scale=2):
                     self._ui_voice_settings = TtsSettings()
-                    self._ui_voice_settings.build_component()
 
             with gr.Row():
                 self._ui_save_btn = gr.Button("Save")
@@ -57,9 +56,6 @@ class AvatarEditor(GradioComponent):
 
         self._ui_save_btn.click(fn=self._handle_save_clicked,
                                 inputs=save_components, outputs=[])
-
-        self._component = component
-        return self._component
 
     @override
     def add_inputs(self, inputs: List[Component]) -> List[Component]:

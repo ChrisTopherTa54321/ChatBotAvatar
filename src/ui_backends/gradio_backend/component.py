@@ -7,13 +7,8 @@ from gradio.components import Component
 
 
 class GradioComponent(abc.ABC):
-
-    @abstractmethod
-    def build_component(self) -> Component:
-        '''
-        Build the gradio user interface.
-        '''
-        pass
+    def __init__(self):
+        ''' Derived classes should instantiate their gradio components in their constructor'''
 
     def add_inputs(self, inputs: List[Component]) -> List[Component]:
         '''
