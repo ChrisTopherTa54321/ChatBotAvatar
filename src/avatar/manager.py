@@ -24,15 +24,6 @@ class Manager:
         self._root_dir: Path = Path(avatar_dir)
         self._avatars: List[Profile] = []
         self._driving_videos: List[str] = []
-        self._active_profile: Profile = None
-
-        # self.refresh()
-        # if len(self._avatars) > 0:
-        #     self.active_profile = self._avatars[0]
-
-    @property
-    def active_profile(self):
-        return self._active_profile
 
     @property
     def avatar_dir(self) -> Path:
@@ -41,10 +32,6 @@ class Manager:
     @property
     def driving_videos_dir(self) -> Path:
         return self._root_dir.joinpath(Manager.Directories.DRIVING_VIDEOS)
-
-    @active_profile.setter
-    def active_profile(self, profile: Profile):
-        self._active_profile = profile
 
     @classmethod
     def sanitize_name(cls, name: str) -> str:

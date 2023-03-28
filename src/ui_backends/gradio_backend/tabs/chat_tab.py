@@ -22,7 +22,6 @@ class ChatTab(GradioTab):
         self._tts_queue: TtsQueue = None
 
         self._ui_chatbot: gr.Chatbot = None
-        self._ui_state: gr.State = None
         self._ui_speak_textbox: gr.Textbox = None
         self._ui_speak_btn: gr.Button = None
 
@@ -41,7 +40,6 @@ class ChatTab(GradioTab):
     @override
     def build_ui(self):
         self._ui_chatbot = gr.Chatbot()
-        self._ui_state = gr.State({})
         with gr.Row():
             with gr.Column(scale=3):
                 txt = gr.Textbox(show_label=False, placeholder="Enter text and press enter").style(container=False)
@@ -69,20 +67,21 @@ class ChatTab(GradioTab):
             self._ui_avatar_button = gr.Button("Generate Video")
 
         # Connect the interface components
-        submit_inputs: List[gr.Component] = [self._ui_state, txt]
+        submit_inputs: List[gr.Component] = [txt]
         submit_outputs: List[Any] = [self._ui_chatbot, self._ui_speak_textbox]
 
         txt.submit(self.submitText, inputs=submit_inputs, outputs=submit_outputs)
         submit_btn.click(self.submitText, inputs=submit_inputs, outputs=submit_outputs)
 
-        clear_btn.click(fn=self._handleClearClick, inputs=[self._ui_state], outputs=[self._ui_chatbot])
+        clear_btn.click(fn=self._handleClearClick, inputs=[], outputs=[self._ui_chatbot])
 
         self._ui_speak_btn.click(fn=self._clear_component, inputs=[], outputs=[self._ui_streaming_audio])
         self._ui_speak_btn.click(fn=None, _js="start_listen_for_audio_component_updates")
-        self._ui_speak_btn.click(self._handleSpeakButton,
-                                 inputs=self._ui_voice_settings.add_inputs(
-                                     [self._ui_state, self._ui_speak_textbox, self._ui_audio_trigger_relay]),
-                                 outputs=self._ui_voice_settings.add_outputs([self._ui_audio_trigger_relay]))
+        # self._ui_speak_btn.click(self._handleSpeakButton,
+        #                          inputs=self._ui_voice_settings.add_inputs(
+        #                              [self._ui_state, self._ui_speak_textbox, self._ui_audio_trigger_relay]),
+        #                          outputs=self._ui_voice_settings.add_outputs([self._ui_audio_trigger_relay]))
+        self._ui_speak_btn.click(fn=self._handleSpeakButton, inputs=[self._ui_voice_settings.instance_data, ])
 
         # Hack:
         # The 'AudioTriggerRelay' disconnects the Speak Button from the Audio Player. If the button output to
@@ -92,8 +91,8 @@ class ChatTab(GradioTab):
         # otherwise if the relay state is unchanged then the audio player will not trigger. This allows the button to trigger
         # the Audio Player withot it being a direct output
         self._ui_audio_trigger_relay.change(fn=self._clear_component, inputs=[], outputs=[self._ui_streaming_audio])
-        self._ui_audio_trigger_relay.change(fn=self._handleAudioRelayTriggered, inputs=[
-            self._ui_state], outputs=[self._ui_streaming_audio, self._ui_full_audio])
+        self._ui_audio_trigger_relay.change(fn=self._handleAudioRelayTriggered, inputs=[], outputs=[
+                                            self._ui_streaming_audio, self._ui_full_audio])
 
     def _clear_component(self, *args, **kwargs):
         logger.info("Clearing component")
@@ -107,8 +106,6 @@ class ChatTab(GradioTab):
     def _handleAudioRelayTriggered(self, *args, **kwargs):
         ''' Relay a signal to load the AudioPlayer '''
         logger.info("Handle Relay Triggered")
-        state, = args
-
         tries = 2
 
         while self._tts_queue and tries > 0:
@@ -143,7 +140,7 @@ class ChatTab(GradioTab):
 
         args, voice_inputs = self._ui_voice_settings.consume_inputs(args)
         voice = self._ui_voice_settings.create_from_inputs(voice_inputs)
-        state, response_text, relay_state = args
+        response_text, relay_state = args
 
         if self._tts_queue:
             logger.warn("Already a TTS queue!")
@@ -162,7 +159,7 @@ class ChatTab(GradioTab):
         return relay_state
 
     def submitText(self, *args, **kwargs) -> Tuple[Tuple[str, str], str]:
-        state, inputText, = args
+        inputText, = args
         response = Shared.getInstance().chat.send_text(inputText)
 
         history = Shared.getInstance().chat.get_history()

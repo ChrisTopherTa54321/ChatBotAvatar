@@ -7,6 +7,7 @@ import gradio as gr
 import numpy as np
 from typing_extensions import override
 
+from dataclasses import dataclass
 from avatar.manager import Manager, Profile
 from ui_backends.gradio_backend.tab import GradioTab
 from ui_backends.gradio_backend.components.avatar_editor import AvatarEditor
@@ -20,6 +21,10 @@ logger = logging.getLogger(__file__)
 class AvatarTab(GradioTab):
     PREVIEW_IMAGE_COLUMN_CNT = 8
 
+    @dataclass
+    class StateData:
+        profile: Profile = None
+
     def __init__(self):
         self._manager: Manager = Shared.getInstance().avatar_manager
         self._ui_refresh_btn: gr.Button = None
@@ -27,6 +32,7 @@ class AvatarTab(GradioTab):
         self._ui_avatar_editor: AvatarEditor = None
         self._ui_new_btn: gr.Button = None
         self._ui_del_btn: gr.Button = None
+        self._ui_state: gr.State = None
 
     @override
     def build_ui(self):
@@ -40,14 +46,16 @@ class AvatarTab(GradioTab):
         with gr.Row():
             self._ui_avatar_editor = AvatarEditor()
 
+        self._ui_state = gr.State(value=AvatarTab.StateData)
+
         hidden_name_box: gr.Textbox = gr.Textbox(visible=False)
         self._ui_new_btn.click(fn=self._handle_new_avatar_clicked,
                                _js='prompt_for_name', inputs=[hidden_name_box], outputs=[hidden_name_box])
         self._ui_del_btn.click(fn=self._handle_delete_clicked, _js="confirm_prompt",
                                inputs=[hidden_name_box], outputs=[hidden_name_box])
         self._ui_refresh_btn.click(fn=self._handle_refresh_clicked, inputs=[], outputs=[self._ui_avatar_list_gallery])
-        self._ui_avatar_list_gallery.select(fn=self._handle_avatar_list_selection, inputs=[self._ui_avatar_editor.get_refresh_trigger()], outputs=[
-                                            self._ui_avatar_editor.get_refresh_trigger()])
+        self._ui_avatar_list_gallery.select(fn=self._handle_avatar_list_selection, inputs=[
+                                            self._ui_avatar_editor.update_ui_relay, self._ui_avatar_editor.instance_data, self._ui_state], outputs=[self._ui_avatar_editor.update_ui_relay])
 
     def _handle_new_avatar_clicked(self, new_name: str):
         logger.info(f"Create new avatar: {new_name}")
@@ -67,8 +75,8 @@ class AvatarTab(GradioTab):
                   for profile in self._manager.list_avatars()]
         return images
 
-    def _handle_avatar_list_selection(self, event_data: gr.SelectData, update_trigger: bool) -> Tuple[None]:
+    def _handle_avatar_list_selection(self, event_data: gr.SelectData, update_trigger: bool, editor_instance_data, state_data) -> Tuple[None]:
         ''' Handles an avatar being selected from the list gallery '''
-        self._manager.active_profile = self._manager.list_avatars()[event_data.index]
-        self._ui_avatar_editor.load_profile(self._manager.active_profile)
+        state_data.profile = self._manager.list_avatars()[event_data.index]
+        editor_instance_data.profile = state_data.profile
         return (not update_trigger)

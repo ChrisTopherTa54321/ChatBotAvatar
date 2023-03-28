@@ -19,7 +19,6 @@ class EventRelay():
         added_outputs = [trigger_checkbox]
 
         def wrapped_func(*wrapped_inputs):
-            logger.info(f"Wrapped function call for {name}: {wrapped_inputs}")
             # Remove the added_inputs in reverse order
             wrapped_inputs = list(wrapped_inputs)
             checkbox_state = wrapped_inputs.pop()
