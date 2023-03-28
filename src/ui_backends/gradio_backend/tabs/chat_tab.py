@@ -48,7 +48,7 @@ class ChatTab(GradioTab):
                     submit_btn = gr.Button("Submit")
                     clear_btn = gr.Button("Clear")
         with gr.Row():
-            self._ui_speak_textbox = gr.Textbox()
+            self._ui_speak_textbox = gr.Textbox(placeholder="Text To Speak", interactive=True)
         with gr.Row():
             self._ui_speak_btn = gr.Button("Speak")
             self._ui_voice_settings = TtsSettings()
