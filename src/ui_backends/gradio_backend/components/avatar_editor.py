@@ -2,6 +2,7 @@ from __future__ import annotations
 from ui_backends.gradio_backend.component import GradioComponent
 from ui_backends.gradio_backend.components.tts_settings import TtsSettings
 from ui_backends.gradio_backend.components.video_gallery import VideoGallery
+from ui_backends.gradio_backend.components.image_generator import ImageGenerator
 from ui_backends.gradio_backend.utils.event_relay import EventRelay
 from typing_extensions import override
 from typing import Any, Dict, Tuple, List
@@ -29,7 +30,7 @@ class AvatarEditor(GradioComponent):
         self._ui_motion_matched_gallery: VideoGallery = None
 
         self._ui_create_avail_driving_video_gallery: VideoGallery = None
-        self._ui_create_driving_src_image: gr.Image = None
+        self._ui_create_driving_src_imagegen: ImageGenerator = None
 
         self._ui_voice_settings: TtsSettings = None
         self._relay_update_ui: Component = None
@@ -65,7 +66,7 @@ class AvatarEditor(GradioComponent):
                             self._ui_create_avail_driving_video_gallery = VideoGallery(
                                 label="", list_getter=self._get_driving_videos)
                         with gr.Column(scale=1):
-                            self._ui_create_driving_src_image = gr.Image()
+                            self._ui_create_driving_src_imagegen = ImageGenerator()
 
             with gr.Row():
                 self._ui_save_btn = gr.Button("Save")
@@ -84,6 +85,12 @@ class AvatarEditor(GradioComponent):
         self._ui_save_btn.click(fn=self._handle_save_clicked,
                                 inputs=[self._ui_filename_textbox, self._ui_name_textbox,
                                         self._ui_profile_image, self._ui_voice_settings.instance_data, self.instance_data], outputs=[])
+
+        self._ui_create_avail_driving_video_gallery.gallery_component.select(fn=self._handle_driving_video, inputs=[
+                                                                             self._ui_create_avail_driving_video_gallery.instance_data], outputs=[self._ui_create_driving_src_imagegen.input_image])
+
+    def _handle_driving_video(seof, gallery_data: VideoGallery.StateData):
+        return gallery_data.selected_video.thumbnail
 
     @override
     def add_inputs(self, inputs: List[Component]) -> List[Component]:

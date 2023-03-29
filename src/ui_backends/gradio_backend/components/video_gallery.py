@@ -83,3 +83,7 @@ class VideoGallery(GradioComponent):
     @property
     def instance_data(self) -> gr.State:
         return self._ui_state
+
+    @property
+    def gallery_component(self) -> gr.Gallery:
+        return self._ui_image_gallery
