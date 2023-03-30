@@ -10,7 +10,7 @@ import os
 
 class VideoInfo():
     IMG_EXTS = ['.png', '.jpg']
-    VID_EXTS = ['.mkv', '.mp4', '.gif', '.avi']
+    VID_EXTS = ['.webm', '.mp4', '.mkv', '.gif', '.avi']
 
     def __init__(self, video_path: Path):
         self._path: Path = video_path

@@ -44,7 +44,7 @@ class AvatarTab(GradioTab):
             self._ui_new_btn = gr.Button("Create New Avatar")
             self._ui_del_btn = gr.Button("Delete")
         with gr.Row():
-            self._ui_avatar_editor = AvatarEditor(open=True)
+            self._ui_avatar_editor = AvatarEditor()
 
         self._ui_state = gr.State(value=AvatarTab.StateData)
 

@@ -41,7 +41,8 @@ class Profile(Serializable):
         self._friendly_name: str = friendly_name
         self._preview_image: Optional[np.ndarray] = None
         self._voice: Tts.Voice = None
-        self._motion_matched_videos: List[VideoInfo] = self._refresh_matched_videos()
+        self._motion_matched_videos: List[VideoInfo] = []
+        self.refresh()
 
     def save(self, output_dir: Path, overwrite: bool = True):
         '''
@@ -58,8 +59,11 @@ class Profile(Serializable):
         with open(os.path.join(output_dir, Profile.Filenames.JSON), "w") as fhndl:
             json.dump(data, fhndl)
 
-    def _refresh_matched_videos(self) -> List[VideoInfo]:
-        return VideoInfo.list_directory(os.path.join(self._root_dir, Profile.Filenames.MOTION_MATCHED_DIR))
+    def refresh(self):
+        self.from_dict(self.as_dict())
+
+    def _get_matched_videos(self) -> List[VideoInfo]:
+        return VideoInfo.list_directory(self.motion_matched_video_directory)
 
     @classmethod
     def from_profile_directory(cls, profile_directory: Path) -> Profile:
@@ -88,6 +92,10 @@ class Profile(Serializable):
     def friendly_name(self) -> str:
         ''' The friendly name of the avatar '''
         return self._friendly_name
+
+    @property
+    def motion_matched_video_directory(self) -> str:
+        return os.path.join(self._root_dir, Profile.Filenames.MOTION_MATCHED_DIR)
 
     @friendly_name.setter
     def friendly_name(self, new_name: str):
@@ -126,7 +134,7 @@ class Profile(Serializable):
         preview_image_path = info.get(Profile.JsonKeys.PREVIEW_IMAGE, None)
         if preview_image_path:
             self._preview_image = ImageUtils.open_or_blank(self._root_dir.joinpath(preview_image_path))
-        self._motion_matched_videos = self._refresh_matched_videos()
+        self._motion_matched_videos = self._get_matched_videos()
         return self
 
     @override

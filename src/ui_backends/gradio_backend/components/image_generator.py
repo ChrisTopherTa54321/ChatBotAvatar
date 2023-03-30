@@ -33,16 +33,15 @@ class ImageGenerator(GradioComponent):
         self._build_component()
 
     def _build_component(self):
-        with gr.Box():
-            with gr.Row():
-                self._ui_image_in = gr.Image(label="Input", interactive=False).style(height=256, width=256)
-                self._ui_image_out = gr.Image(label="Output", interactive=False).style(height=256, width=256)
-            self._ui_image_prompt = gr.Textbox(placeholder="Prompt")
-            self._ui_image_prompt_neg = gr.Textbox(placeholder="Negative Prompt")
-            self._ui_image_txt2img_btn = gr.Button("Txt2Img")
-            self._ui_image_img2img_btn = gr.Button("Img2Img")
-            self._ui_image_posematch_btn = gr.Button("PoseMatch")
-            self._ui_image_poseonlymatch_btn = gr.Button("PoseOnlyMatch")
+        with gr.Row():
+            self._ui_image_in = gr.Image(label="Input", interactive=True).style(height=256, width=256)
+            self._ui_image_out = gr.Image(label="Output", interactive=False).style(height=256, width=256)
+        self._ui_image_prompt = gr.Textbox(label="Prompt")
+        self._ui_image_prompt_neg = gr.Textbox(label="Negative Prompt")
+        self._ui_image_txt2img_btn = gr.Button("Txt2Img")
+        self._ui_image_img2img_btn = gr.Button("Img2Img")
+        self._ui_image_posematch_btn = gr.Button("PoseMatch")
+        self._ui_image_poseonlymatch_btn = gr.Button("PoseOnlyMatch")
 
         self._ui_image_txt2img_btn.click(fn=self._handle_txt2img_click,
                                          inputs=[self._ui_image_prompt, self._ui_image_prompt_neg], outputs=self._ui_image_out)
@@ -83,3 +82,7 @@ class ImageGenerator(GradioComponent):
     @property
     def input_image(self) -> gr.Image:
         return self._ui_image_in
+
+    @property
+    def output_image(self) -> gr.Image:
+        return self._ui_image_out
