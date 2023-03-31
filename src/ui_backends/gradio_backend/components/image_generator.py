@@ -26,10 +26,6 @@ class ImageGenerator(GradioComponent):
         self._ui_image_posematch_btn: gr.Button = None
         self._ui_image_poseonlymatch_btn: gr.Button = None
 
-        self._component: Component = None
-        self._inputs: List[Component] = []
-        self._outputs: List[Component] = []
-
         self._build_component()
 
     def _build_component(self):

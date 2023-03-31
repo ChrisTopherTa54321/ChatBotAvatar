@@ -10,6 +10,7 @@ import numpy as np
 from utils.shared import Shared
 
 import gradio as gr
+import tempfile
 from typing_extensions import override
 
 from image_gen import ImageGen
@@ -26,6 +27,7 @@ class ToolsTab(GradioTab):
         self._ui_lip_sync_btn: gr.Button = None
         self._ui_lip_sync_input: gr.Video = None
         self._ui_lip_sync_audio: gr.Audio = None
+        self._ui_lip_sync_audio_file: gr.File = None
         self._ui_lip_sync_output_video: gr.Video = None
 
         self._ui_motion_match_btn: gr.Button = None
@@ -73,7 +75,9 @@ class ToolsTab(GradioTab):
             """)
             with gr.Row():
                 self._ui_lip_sync_input.render()  # = gr.Video(label="Lip Sync Input")
-                self._ui_lip_sync_audio = gr.Audio(label="Lip Sync Audio")
+                with gr.Column():
+                    self._ui_lip_sync_audio = gr.Audio(label="Lip Sync Audio")
+                    self._ui_lip_sync_audio_file = gr.File(label="Wav File")
             with gr.Row():
                 self._ui_lip_sync_btn = gr.Button("Run Lip Sync")
                 self._ui_lip_sync_output_video = gr.Video(label="Lip Sync Output")
@@ -81,7 +85,7 @@ class ToolsTab(GradioTab):
         self._ui_image_gen = ImageGenerator()
 
         self._ui_lip_sync_btn.click(fn=self._handle_lip_sync_clicked, inputs=[
-                                    self._ui_lip_sync_audio, self._ui_lip_sync_input], outputs=[self._ui_lip_sync_output_video])
+                                    self._ui_lip_sync_audio, self._ui_lip_sync_audio_file, self._ui_lip_sync_input], outputs=[self._ui_lip_sync_output_video])
         self._ui_motion_match_btn.click(fn=self._handle_motion_match_clicked, inputs=[
                                         self._ui_motion_match_driving_video, self._ui_motion_match_input_image], outputs=[self._ui_motion_match_output_video])
 
@@ -117,7 +121,7 @@ class ToolsTab(GradioTab):
 
         return out_filename
 
-    def _handle_lip_sync_clicked(self, audio_data: Tuple[int, np.array], image_or_video_path: str) -> Tuple[str]:
+    def _handle_lip_sync_clicked(self, audio_data: Tuple[int, np.array], audio_path: tempfile.NamedTemporaryFile, image_or_video_path: str) -> Tuple[str]:
         '''
         Handles the Lip Sync button press. Runs Wav2Lip on the inputs
 
@@ -142,6 +146,8 @@ class ToolsTab(GradioTab):
                 wav.writeframesraw(audio_buffer)
         elif isinstance(audio_data, str):
             audio_filename = audio_data
+        elif audio_path:
+            audio_filename = audio_path.name
         else:
             raise Exception("Bad audio file")
 

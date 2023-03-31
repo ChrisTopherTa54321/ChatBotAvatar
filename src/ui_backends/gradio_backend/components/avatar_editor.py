@@ -47,8 +47,6 @@ class AvatarEditor(GradioComponent):
         self._ui_state: gr.State = None
 
         self._ui_save_profile: gr.Button = None
-        self._inputs: List[Component] = []
-        self._outputs: List[Component] = []
 
         self._build_component(label=label)
 
@@ -94,9 +92,6 @@ class AvatarEditor(GradioComponent):
                                     label="Video Name", placeholder="Name for video within Avatar profile")
                                 self._ui_save_video_btn = gr.Button("Save Video")
 
-        self._inputs = [self._ui_filename_textbox, self._ui_name_textbox, self.ui_profile_image]
-        self._outputs = [self._ui_filename_textbox, self._ui_name_textbox, self._ui_profile_image]
-
         refresh_components = [self._ui_filename_textbox, self._ui_name_textbox,
                               self.ui_profile_image, self._ui_voice_settings.update_ui_relay]
         refresh_inputs = refresh_components + [self._ui_voice_settings.instance_data, self.instance_data]
@@ -126,15 +121,6 @@ class AvatarEditor(GradioComponent):
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
         shutil.copyfile(input_video_path, output_path)
         editor_state_data.profile.refresh()
-
-    @override
-    def add_inputs(self, inputs: List[Component]) -> List[Component]:
-        return self._inputs + inputs
-
-    @override
-    def consume_inputs(self, inputs: List[Any]) -> Tuple[List[Any], List[Any]]:
-        pos = len(self._inputs)
-        return (inputs[pos:], inputs[:pos])
 
     @property
     def update_ui_relay(self) -> Component:

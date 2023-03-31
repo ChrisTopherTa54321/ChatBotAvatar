@@ -30,10 +30,6 @@ class MotionMatcher(GradioComponent):
         self._ui_generate_btn: gr.Button = None
         self._ui_state: gr.State = None
 
-        self._component: Component = None
-        self._inputs: List[Component] = []
-        self._outputs: List[Component] = []
-
         self._build_component()
 
     def _build_component(self):

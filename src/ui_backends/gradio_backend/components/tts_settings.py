@@ -72,7 +72,10 @@ class TtsSettings(GradioComponent):
         AppData.get_instance().app.load(fn=self._read_current_ui, inputs=refresh_inputs)
 
     def _handle_refresh_trigger(self, voice_name: str, voice_style: str, voice_pitch: str, voice_rate: str, state_data: TtsSettings.StateData):
-        return (state_data.voice.get_name(), state_data.voice.get_style(), state_data.voice.get_pitch(), state_data.voice.get_rate())
+        if state_data.voice:
+            return (state_data.voice.get_name(), state_data.voice.get_style(), state_data.voice.get_pitch(), state_data.voice.get_rate())
+        else:
+            return (voice_name, voice_style, voice_pitch, voice_rate)
 
     @property
     def update_ui_relay(self) -> Component:
