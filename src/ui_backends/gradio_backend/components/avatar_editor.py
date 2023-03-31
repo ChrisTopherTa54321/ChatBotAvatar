@@ -98,7 +98,7 @@ class AvatarEditor(GradioComponent):
         refresh_outputs = refresh_components
 
         self._relay_update_ui = EventRelay.wrap_event(
-            func=self._handle_refresh_trigger, inputs=refresh_inputs, outputs=refresh_outputs, name="AvatarEditorWrapped")
+            fn=self._handle_refresh_trigger, inputs=refresh_inputs, outputs=refresh_outputs, name="AvatarEditorWrapped")
 
         self._ui_save_profile.click(fn=self._handle_save_profile_clicked,
                                     inputs=[self._ui_filename_textbox, self._ui_name_textbox,

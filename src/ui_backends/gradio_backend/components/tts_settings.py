@@ -57,7 +57,7 @@ class TtsSettings(GradioComponent):
         refresh_inputs = refresh_outputs + [self.instance_data]
 
         self._relay_update_ui = EventRelay.wrap_event(
-            func=self._handle_refresh_trigger, inputs=refresh_inputs, outputs=refresh_outputs, name="TtsSettingsWrapped")
+            fn=self._handle_refresh_trigger, inputs=refresh_inputs, outputs=refresh_outputs, name="TtsSettingsWrapped")
 
         self._ui_voice_dropdown.change(self._on_voice_name_change, inputs=[
                                        self._ui_voice_dropdown, self.instance_data], outputs=[self._ui_voice_style_dropdown])

@@ -22,11 +22,11 @@ class EventRelay():
             # Remove the added_inputs in reverse order
             wrapped_inputs = list(wrapped_inputs)
             checkbox_state = wrapped_inputs.pop()
-            ret = func(*wrapped_inputs)
+            ret = fn(*wrapped_inputs)
             return list(ret) + [checkbox_state]
 
-        new_inputs = inputs + added_inputs
-        new_outputs = outputs + added_outputs
-        trigger_checkbox.change(fn=wrapped_func, inputs=new_inputs, outputs=new_outputs)
+        new_inputs = (inputs if inputs else []) + added_inputs
+        new_outputs = (outputs if outputs else []) + added_outputs
+        trigger_checkbox.change(fn=wrapped_func if fn else None, inputs=new_inputs, outputs=new_outputs, **kwargs)
 
         return trigger_checkbox
