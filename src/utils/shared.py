@@ -2,13 +2,14 @@
 from __future__ import annotations
 import argparse
 import os
-
 from ui import Ui
 from avatar.manager import Manager
 from utils.voice_factory import VoiceFactory
 from utils.chat_factory import ChatFactory
 from typing import Dict, Any, Type
 from image_gen import ImageGen
+import uuid
+from pathlib import Path
 
 
 class Shared:
@@ -109,6 +110,19 @@ class Shared:
     @property
     def avatar_manager(self) -> Manager:
         return self._avatar_manager
+
+    @property
+    def unique_file_prefix(self) -> Path:
+        '''
+        Generate the prefix for a unique file name
+
+        Args:
+            tag (str, optional): tag to include in the file name
+
+        Returns:
+            Path: Path to a unique file base name
+        '''
+        return Path(os.path.join(self.args.temp_dir, f"{uuid.uuid4().hex}"))
 
     def _parse_args(self):
         parser = argparse.ArgumentParser(description="ChatBot",

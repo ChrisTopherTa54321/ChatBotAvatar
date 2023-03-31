@@ -76,7 +76,7 @@ class AzureTts(Tts):
             return ret
 
         @override
-        def synthesize(self, text: str) -> Tuple[np.array, int]:
+        def synthesize(self, text: str) -> Tuple[int, np.array]:
             ssml = self._buildSsml(text)
             synthesizer: speechsdk.SpeechSynthesizer = self._tts._get_synthesizer()
             result = synthesizer.speak_ssml_async(ssml).get()
@@ -88,7 +88,7 @@ class AzureTts(Tts):
             waveData: bytes = waveFile.readframes(waveFile.getnframes())
             waveRate: int = waveFile.getframerate()
 
-            return np.frombuffer(waveData, dtype=np.int16), waveRate
+            return waveRate, np.frombuffer(waveData, dtype=np.int16)
 
         @override
         def get_name(self) -> str:

@@ -33,12 +33,13 @@ class VoiceFactory:
     def create_voice_from_dict(cls, voice_info: Dict[str, Any]) -> Tts.Voice:
         tts_name: str = voice_info[Tts.Voice.JsonKeys.NAME]
         voice = VoiceFactory.get_voice(tts_name)
-        style = voice_info.get(Tts.Voice.JsonKeys.STYLE, None)
-        if style:
-            voice.set_style(style)
-        rate = voice_info.get(Tts.Voice.JsonKeys.RATE, None)
-        if rate:
-            voice.set_rate(rate)
+        if voice:
+            style = voice_info.get(Tts.Voice.JsonKeys.STYLE, None)
+            if style:
+                voice.set_style(style)
+            rate = voice_info.get(Tts.Voice.JsonKeys.RATE, None)
+            if rate:
+                voice.set_rate(rate)
         return voice
 
     @classmethod

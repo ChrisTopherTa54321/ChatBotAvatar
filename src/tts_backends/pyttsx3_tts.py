@@ -55,7 +55,7 @@ class Pyttsx3Tts(Tts):
             return lang.decode()
 
         @override
-        def synthesize(self, text: str) -> Tuple[np.array, int]:
+        def synthesize(self, text: str) -> Tuple[int, np.array]:
             # Enforce single threading
             with self._lock:
                 tts: pyttsx3.Engine = pyttsx3.init()
@@ -83,7 +83,7 @@ class Pyttsx3Tts(Tts):
                     waveRate: int = waveFile.getframerate()
                     waveFile.close()
 
-            return np.frombuffer(waveData, dtype=np.int16), waveRate
+            return waveRate, np.frombuffer(waveData, dtype=np.int16)
 
         @override
         def get_backend_name(self) -> str:

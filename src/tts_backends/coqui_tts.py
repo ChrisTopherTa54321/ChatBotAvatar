@@ -85,7 +85,7 @@ class CoquiTts(Tts):
             return self._model_path
 
         @override
-        def synthesize(self, text: str) -> Tuple[np.array, int]:
+        def synthesize(self, text: str) -> Tuple[int, np.array]:
             tts = cTTS(self.get_path(), gpu=self._tts._use_gpu)
             language = self.get_language() if self.is_multilingual() else None
             speaker = self.get_style() if tts.speakers else None
@@ -93,7 +93,7 @@ class CoquiTts(Tts):
             pcm_data_float /= 1.414
             pcm_data_float *= 32767
             pcm_data = pcm_data_float.astype(np.int16)
-            return np.frombuffer(pcm_data, dtype=np.int16), self.get_sampling_rate()
+            return self.get_sampling_rate(), np.frombuffer(pcm_data, dtype=np.int16)
 
         @override
         def get_backend_name(self) -> str:

@@ -117,7 +117,7 @@ class Tts(abc.ABC):
             '''
 
         @abstractmethod
-        def synthesize(self, text: str) -> Tuple[np.array, int]:
+        def synthesize(self, text: str) -> Tuple[int, np.array]:
             '''
             Generate audio for the given text
 
@@ -125,7 +125,7 @@ class Tts(abc.ABC):
                 text (str): text to synthesize
 
             Returns:
-                Tuple of (audio buffer data, sampling rate)
+                Tuple of (sampling rate, audio buffer data)
             '''
 
     @abstractmethod

@@ -117,3 +117,11 @@ class TtsSpeaker(GradioComponent):
     @property
     def instance_data(self) -> gr.State:
         return self._ui_state
+
+    @property
+    def output_audio(self) -> gr.Audio:
+        return self._ui_full_audio
+
+    @property
+    def prompt(self) -> gr.Textbox:
+        return self._ui_prompt_textbox

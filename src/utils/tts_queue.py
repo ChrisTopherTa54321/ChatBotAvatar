@@ -213,7 +213,7 @@ class TtsQueue:
                 logger.info(f"Worker {worker_id} got work item: {text_to_speak}")
                 start = time.time()
                 try:
-                    audio_data, sample_rate = params.voice.synthesize(text=text_to_speak)
+                    sample_rate, audio_data = params.voice.synthesize(text=text_to_speak)
                 except Exception as e:
                     traceback.print_exception(e)
                     logger.error(f"Synthesize Error: {e}")
