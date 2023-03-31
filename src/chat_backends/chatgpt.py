@@ -13,6 +13,8 @@ logger = logging.getLogger(__file__)
 
 
 class ChatGpt(Chat):
+    BACKEND_NAME: str = "ChatGpt"
+
     disclaimerRe: re.Pattern = re.compile(r'(disclaimer.*?\n+)', re.IGNORECASE)
     ROLE_MAP: Dict[str, str] = {Chat.Roles.SYSTEM: "system", Chat.Roles.USER: "user", Chat.Roles.AI: "assistant"}
 

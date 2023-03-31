@@ -1,18 +1,15 @@
 ''' Chat interface tab '''
 import logging
-from typing import List, Tuple, Dict, Any
+from typing import Tuple
 
 import gradio as gr
 import numpy as np
 from typing_extensions import override
 
-from chat import Chat
-from tts import Tts
-from ui_backends.gradio_backend.tab import GradioTab
+from ui_backends.gradio_backend.components.chat_box import ChatBox
 from ui_backends.gradio_backend.components.tts_settings import TtsSettings
+from ui_backends.gradio_backend.tab import GradioTab
 from utils.tts_queue import TtsQueue
-from utils.shared import Shared
-from utils.voice_factory import VoiceFactory
 
 logger = logging.getLogger(__file__)
 
@@ -21,11 +18,8 @@ class ChatTab(GradioTab):
     def __init__(self):
         self._tts_queue: TtsQueue = None
 
-        self._ui_chatbot: gr.Chatbot = None
-        self._ui_speak_textbox: gr.Textbox = None
-        self._ui_speak_btn: gr.Button = None
-
         self._ui_voice_settings: TtsSettings = None
+        self._ui_chatbox: ChatBox = None
 
         self._ui_clear_btn: gr.Button = None
 
@@ -39,19 +33,15 @@ class ChatTab(GradioTab):
 
     @override
     def build_ui(self):
-        self._ui_chatbot = gr.Chatbot()
-        with gr.Row():
-            with gr.Column(scale=3):
-                txt = gr.Textbox(show_label=False, placeholder="Enter text and press enter").style(container=False)
-            with gr.Column(scale=1):
-                with gr.Row():
-                    submit_btn = gr.Button("Submit")
-                    clear_btn = gr.Button("Clear")
+        with gr.Box():
+            self. _ui_chatbox = ChatBox()
+
         with gr.Row():
             self._ui_speak_textbox = gr.Textbox(placeholder="Text To Speak", interactive=True)
         with gr.Row():
             self._ui_speak_btn = gr.Button("Speak")
-            self._ui_voice_settings = TtsSettings()
+            with gr.Box():
+                self._ui_voice_settings = TtsSettings()
 
         # Hidden helpers for audio chunking
         with gr.Group():
@@ -65,15 +55,6 @@ class ChatTab(GradioTab):
         with gr.Group():
             self._ui_avatar_video = gr.Video(label="Avatar", interactive=False)
             self._ui_avatar_button = gr.Button("Generate Video")
-
-        # Connect the interface components
-        submit_inputs: List[gr.Component] = [txt]
-        submit_outputs: List[Any] = [self._ui_chatbot, self._ui_speak_textbox]
-
-        txt.submit(self.submitText, inputs=submit_inputs, outputs=submit_outputs)
-        submit_btn.click(self.submitText, inputs=submit_inputs, outputs=submit_outputs)
-
-        clear_btn.click(fn=self._handleClearClick, inputs=[], outputs=[self._ui_chatbot])
 
         self._ui_speak_btn.click(fn=self._clear_component, inputs=[], outputs=[self._ui_streaming_audio])
         self._ui_speak_btn.click(fn=None, _js="start_listen_for_audio_component_updates")
@@ -94,11 +75,6 @@ class ChatTab(GradioTab):
     def _clear_component(self, *args, **kwargs):
         logger.info("Clearing component")
         return None
-
-    def _handleClearClick(self, *args, **kwargs):
-        # TODO: Per-client reset
-        Shared.getInstance().chat.reset()
-        return [(None, None)]
 
     def _handleAudioRelayTriggered(self, *args, **kwargs):
         ''' Relay a signal to load the AudioPlayer '''
@@ -148,21 +124,3 @@ class ChatTab(GradioTab):
             return not relay_state
         logger.info("No samples received before timeout")
         return relay_state
-
-    def submitText(self, *args, **kwargs) -> Tuple[Tuple[str, str], str]:
-        inputText, = args
-        response = Shared.getInstance().chat.send_text(inputText)
-
-        history = Shared.getInstance().chat.get_history()
-        # Convert to Gradio's (user, ai) format
-        chat_output: List[Tuple[str, str]] = []
-        for role, response in history:
-            msg = f"{role.upper()}: {response}"
-            if role == Chat.Roles.AI:
-                chat_output.append((None, msg))
-            elif role == Chat.Roles.USER:
-                chat_output.append((msg, None))
-            elif role == Chat.Roles.SYSTEM:
-                chat_output.append((msg, None))
-
-        return chat_output, response

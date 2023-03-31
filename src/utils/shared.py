@@ -3,12 +3,10 @@ from __future__ import annotations
 import argparse
 import os
 
-from image_gen import ImageGen
-from chat import Chat
-from tts import Tts
 from ui import Ui
 from avatar.manager import Manager
 from utils.voice_factory import VoiceFactory
+from utils.chat_factory import ChatFactory
 from typing import Dict, Any, Type
 
 
@@ -20,9 +18,7 @@ class Shared:
         self._args: argparse.Namespace = self._parse_args()
 
         self._image_gen: ImageGen = None
-        self._voice_factory: VoiceFactory = None
         self._ui: Ui = None
-        self._chat: Chat = None
 
         self._data: Dict[Any, Any] = {}
 
@@ -41,24 +37,24 @@ class Shared:
         # Select Chat backend
         if args.chat_backend == "chatgpt":
             from chat_backends.chatgpt import ChatGpt
-            self._chat = ChatGpt(api_key=args.openai_api_key, initial_instructions=args.chat_instructions)
+            ChatFactory.register_chat(ChatGpt.BACKEND_NAME, lambda: ChatGpt(
+                api_key=args.openai_api_key, initial_instructions=args.chat_instructions))
         else:
             raise Exception(f"Unsupported chat backend: {args.chat_backend}")
 
         # Select TTS backend
-        self._voice_factory = VoiceFactory()
         if args.tts_backend == "azure":
             from tts_backends.azure_tts import AzureTts
             tts = AzureTts(api_key=args.azure_api_key, api_region=args.azure_api_region)
-            self._voice_factory.register_tts(AzureTts.BACKEND_NAME, tts)
+            VoiceFactory.register_tts(AzureTts.BACKEND_NAME, tts)
         elif args.tts_backend == "coqui":
             from tts_backends.coqui_tts import CoquiTts
             tts = CoquiTts(use_gpu=args.coqui_use_gpu)
-            self._voice_factory.register_tts(CoquiTts.BACKEND_NAME, tts)
+            VoiceFactory.register_tts(CoquiTts.BACKEND_NAME, tts)
         elif args.tts_backend == "pyttsx3":
             from tts_backends.pyttsx3_tts import Pyttsx3Tts
             tts = Pyttsx3Tts()
-            self._voice_factory.register_tts(Pyttsx3Tts.BACKEND_NAME, tts)
+            VoiceFactory.register_tts(Pyttsx3Tts.BACKEND_NAME, tts)
         else:
             raise Exception(f"Unsupported TTS backend: {args.tts_backend}")
 
@@ -100,14 +96,6 @@ class Shared:
     @root_dir.setter
     def root_dir(self, new_path: str):
         self._root_dir = new_path
-
-    @property
-    def image_gen(self) -> ImageGen:
-        return self._image_gen
-
-    @property
-    def chat(self) -> Chat:
-        return self._chat
 
     @property
     def ui(self) -> Ui:

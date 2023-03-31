@@ -41,15 +41,14 @@ class TtsSettings(GradioComponent):
 
         style_list = voice.get_styles_available() if voice else []
 
-        with gr.Accordion(label="Voice Settings"):
-            with gr.Row():
-                self._ui_voice_dropdown = gr.Dropdown(label="Voices", multiselect=False,
-                                                      choices=voice_name_list, value=voice_name_list[0])
-                self._ui_voice_style_dropdown = gr.Dropdown(label="Styles", multiselect=False,
-                                                            choices=style_list, value=style_list[0])
-            with gr.Row():
-                self._ui_pitch_textbox = gr.Textbox(label="Pitch")
-                self._ui_rate_textbox = gr.Textbox(label="Rate")
+        with gr.Row():
+            self._ui_voice_dropdown = gr.Dropdown(label="Voices", multiselect=False,
+                                                  choices=voice_name_list, value=voice_name_list[0])
+            self._ui_voice_style_dropdown = gr.Dropdown(label="Styles", multiselect=False,
+                                                        choices=style_list, value=style_list[0])
+        with gr.Row():
+            self._ui_pitch_textbox = gr.Textbox(label="Pitch")
+            self._ui_rate_textbox = gr.Textbox(label="Rate")
 
         self._ui_state = gr.State(value=TtsSettings.StateData)
 
