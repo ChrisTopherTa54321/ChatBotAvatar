@@ -8,6 +8,7 @@ from avatar.manager import Manager
 from utils.voice_factory import VoiceFactory
 from utils.chat_factory import ChatFactory
 from typing import Dict, Any, Type
+from image_gen import ImageGen
 
 
 class Shared:
@@ -100,6 +101,10 @@ class Shared:
     @property
     def ui(self) -> Ui:
         return self._ui
+
+    @property
+    def image_gen(self) -> ImageGen:
+        return self._image_gen
 
     @property
     def avatar_manager(self) -> Manager:

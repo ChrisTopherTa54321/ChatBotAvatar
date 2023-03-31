@@ -18,7 +18,7 @@ from tts import Tts
 from ui_backends.gradio_backend.tab import GradioTab
 from ui_backends.gradio_backend.components.image_generator import ImageGenerator
 from ui_backends.gradio_backend.components.tts_speaker import TtsSpeaker
-
+from ui_backends.gradio_backend.components.motion_matcher import MotionMatcher
 
 logger = logging.getLogger(__file__)
 
@@ -26,23 +26,16 @@ logger = logging.getLogger(__file__)
 class ToolsTab(GradioTab):
 
     def __init__(self):
+
         self._ui_lip_sync_btn: gr.Button = None
         self._ui_lip_sync_input: gr.Video = None
         self._ui_lip_sync_audio: gr.Audio = None
         self._ui_lip_sync_audio_file: gr.File = None
         self._ui_lip_sync_output_video: gr.Video = None
 
-        self._ui_motion_match_btn: gr.Button = None
-        self._ui_motion_match_input_image: gr.Image = None
-        self._ui_motion_match_driving_video: gr.Video = None
-        self._ui_motion_match_output_video: gr.Video = None
-
         self._ui_image_gen: ImageGenerator = None
         self._ui_tts: TtsSpeaker = None
-
-        # self._ui_image_gen_textbox: gr.Textbox = None
-        # self._ui_image_gen_btn: gr.Button = None
-        # self._ui_image_gen_output: gr.Image = None
+        self._ui_motion_matcher: MotionMatcher = None
 
     @override
     def build_ui(self):
@@ -56,17 +49,9 @@ class ToolsTab(GradioTab):
             Click the Run Motion Match button and get the result in the output box. This output can then have Lip Sync applied to it.
             </p>
             """)
-            with gr.Row():
-                self._ui_motion_match_input_image = gr.Image(label="Motion Match Input Image")
-                self._ui_motion_match_driving_video = gr.Video(label="Driving Video")
-            with gr.Row():
-                self._ui_motion_match_output_video = gr.Video(label="Motion Match Output", render=False)
-                with gr.Column():
-                    self._ui_motion_match_btn = gr.Button("Run Motion Match")
-                    gr.Button("Send to Lip Sync").click(fn=lambda x: x, inputs=[
-                        self._ui_motion_match_output_video], outputs=[self._ui_lip_sync_input])
-                with gr.Column():
-                    self._ui_motion_match_output_video.render()
+            with gr.Box():
+                self._ui_motion_matcher = MotionMatcher()
+            send_to_lip_sync_btn: gr.Button = gr.Button("Send Output to Lip Sync Input")
 
         with gr.Accordion("Lip Sync", open=False):
             gr.Markdown("""
@@ -85,44 +70,16 @@ class ToolsTab(GradioTab):
                 self._ui_lip_sync_btn = gr.Button("Run Lip Sync")
                 self._ui_lip_sync_output_video = gr.Video(label="Lip Sync Output")
 
-        self._ui_image_gen = ImageGenerator()
+        with gr.Accordion("Text to Speech", open=False):
+            self._ui_tts = TtsSpeaker()
+
+        with gr.Accordion("Image Generator", open=False):
+            self._ui_image_gen = ImageGenerator()
 
         self._ui_lip_sync_btn.click(fn=self._handle_lip_sync_clicked, inputs=[
                                     self._ui_lip_sync_audio, self._ui_lip_sync_audio_file, self._ui_lip_sync_input], outputs=[self._ui_lip_sync_output_video])
-        self._ui_motion_match_btn.click(fn=self._handle_motion_match_clicked, inputs=[
-                                        self._ui_motion_match_driving_video, self._ui_motion_match_input_image], outputs=[self._ui_motion_match_output_video])
-
-    def _handle_image_gen_clicked(self, prompt: str) -> Tuple[np.array]:
-        image_gen = Shared.getInstance().image_gen
-        result = image_gen.gen_image(prompt=prompt)
-        return (result.image)
-
-    def _handle_motion_match_clicked(self, driving_video: str, image_data: np.array) -> Tuple[str]:
-        '''
-        Handles the Motion Match button press. Runs Thin Plate Spline Motion Model demo  on the inputs
-
-        Args:
-            driving_video (str): path to the driving video for motion matching
-            image_path (str): path to the image that should be applied to the video
-
-        Returns:
-            Tuple[str]: path to output video
-        '''
-        args = Shared.getInstance().args
-        unique_id: str = uuid.uuid4().hex
-
-        image_filename: str = os.path.join(args.temp_dir, f"{unique_id}_image.png")
-        img: Image = Image.fromarray(image_data)
-        img.save(image_filename)
-        try:
-            from avatar.motion_match import MotionMatch
-            out_filename: str = os.path.join(args.temp_dir, f"{unique_id}_motion_matched_video.mp4")
-            MotionMatch.render(source_image=image_filename, driving_video=driving_video, output_path=out_filename)
-        except Exception as e:
-            logger.error(e)
-            out_filename = None
-
-        return out_filename
+        send_to_lip_sync_btn.click(fn=lambda x: x, inputs=[self._ui_motion_matcher.output_video], outputs=[
+                                   self._ui_lip_sync_input])
 
     def _handle_lip_sync_clicked(self, audio_data: Tuple[int, np.array], audio_path: tempfile.NamedTemporaryFile, image_or_video_path: str) -> Tuple[str]:
         '''
