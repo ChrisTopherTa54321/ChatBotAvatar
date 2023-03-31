@@ -29,6 +29,11 @@ class ToolsTab(GradioTab):
 
     @override
     def build_ui(self):
+        with gr.Accordion("Image Generator", open=False):
+            with gr.Box():
+                self._ui_image_gen = ImageGenerator()
+            send_image_to_motion_match_btn = gr.Button("Send Output to Motion Match Input")
+
         self._ui_lip_sync_input = gr.Video(label="Lip Sync Input", render=False)
         with gr.Accordion("Motion Match", open=False):
             gr.Markdown("""
@@ -52,11 +57,17 @@ class ToolsTab(GradioTab):
             send_audio_to_lipsync: gr.Button = gr.Button("Send Output to Lip Sync Input")
 
         with gr.Accordion("Lip Sync", open=False):
+            gr.Markdown("""
+                <p>
+                Process using <a href='https://github.com/Rudrabha/Wav2Lip'>Wav2Lip</a>
+                </p><p>
+                Select a source input video or image (you can upload a still image in the 'video' box), and the audio to lip sync to, then click the Run Lip sync button.
+                </p>
+                """)
             self._ui_lip_sync_ui: LipSyncUi = LipSyncUi()
 
-        with gr.Accordion("Image Generator", open=False):
-            self._ui_image_gen = ImageGenerator()
-
+        send_image_to_motion_match_btn.click(fn=lambda x: x, inputs=[self._ui_image_gen.output_image], outputs=[
+                                             self._ui_motion_matcher.input_image])
         send_vid_to_lipsync.click(fn=lambda x: x, inputs=[self._ui_motion_matcher.output_video], outputs=[
             self._ui_lip_sync_ui.input_video])
         send_audio_to_lipsync.click(fn=lambda filename, toggle: (audio_to_file_event(filename), not toggle),

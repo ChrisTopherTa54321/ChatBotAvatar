@@ -35,13 +35,6 @@ class LipSyncUi(GradioComponent):
         self._build_component()
 
     def _build_component(self):
-        gr.Markdown("""
-        <p>
-        Process using <a href='https://github.com/Rudrabha/Wav2Lip'>Wav2Lip</a>
-        </p><p>
-        Select a source input video or image (you can upload a still image in the 'video' box), and the audio to lip sync to, then click the Run Lip sync button.
-        </p>
-        """)
         with gr.Row():
             self._ui_input_video = gr.Video(label="Lip Sync Input")
             with gr.Column():
