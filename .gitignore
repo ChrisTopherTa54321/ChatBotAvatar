@@ -1,9 +1,8 @@
 .env
 .vscode
 *.pyc
-avatars/
+avatar/
 tmp/
 
 requirements.txt
 .gitignore
-avatar

@@ -10,6 +10,7 @@ from typing import Dict, Any, Type
 from image_gen import ImageGen
 import uuid
 from pathlib import Path
+import shutil
 
 
 class Shared:
@@ -66,6 +67,9 @@ class Shared:
             self._ui = GradioUi(jobs=args.jobs)
         else:
             raise Exception(f"Unsupported UI backend: {args.ui_backend}")
+
+        if args.clear_temp_on_launch:
+            shutil.rmtree(args.temp_dir)
 
     @classmethod
     def init(cls, root_dir: str):
@@ -153,5 +157,7 @@ class Shared:
         parser.add_argument("--chat-instructions", help="Initial directions to give Chat backend",
                             default="You are an AI-driven chatbot")
         parser.add_argument("--temp-dir", help="Directory to write temporary files", default="tmp")
+        parser.add_argument("--clear-temp-on-launch", help="Cleans the temporary directory each launch",
+                            action='store_true', default=False)
 
         return parser.parse_args()
