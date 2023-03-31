@@ -71,6 +71,7 @@ class TtsQueue:
         self._read_chunk_id: int = 0
         self._worker_chunk_id: int = 0
         self._new_audio_avail_event: Event = Event()
+        self._audio_complete_event: Event = Event()
 
     def cancel(self):
         '''
@@ -160,7 +161,7 @@ class TtsQueue:
         end_time = time.time() + timeout if timeout else None
         audio_ready = self._read_chunk_id in self._audio
 
-        while not audio_ready:
+        while not (audio_ready or self.audio_done):
             remaining_timeout = end_time - time.time() if end_time else None
             signaled = self._new_audio_avail_event.wait(timeout=remaining_timeout)
             if signaled:
@@ -170,6 +171,9 @@ class TtsQueue:
                 break
 
         return audio_ready
+
+    def wait_for_audio_complete(self, timeout: float = None) -> bool:
+        return self._audio_complete_event.wait(timeout)
 
     def _get_chunk_id(self):
         ''' Returns the next chunk id '''
@@ -229,3 +233,8 @@ class TtsQueue:
         # self._assemble_audio()
         logger.info("Synthesis complete")
         self._pool_result = None
+        self._audio_complete_event.set()
+
+    @property
+    def audio_done(self) -> bool:
+        return self._audio_complete_event.is_set()

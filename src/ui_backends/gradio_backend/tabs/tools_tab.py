@@ -17,6 +17,8 @@ from image_gen import ImageGen
 from tts import Tts
 from ui_backends.gradio_backend.tab import GradioTab
 from ui_backends.gradio_backend.components.image_generator import ImageGenerator
+from ui_backends.gradio_backend.components.tts_speaker import TtsSpeaker
+
 
 logger = logging.getLogger(__file__)
 
@@ -36,6 +38,7 @@ class ToolsTab(GradioTab):
         self._ui_motion_match_output_video: gr.Video = None
 
         self._ui_image_gen: ImageGenerator = None
+        self._ui_tts: TtsSpeaker = None
 
         # self._ui_image_gen_textbox: gr.Textbox = None
         # self._ui_image_gen_btn: gr.Button = None
