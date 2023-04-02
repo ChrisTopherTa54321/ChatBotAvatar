@@ -7,6 +7,7 @@ from gradio.components import Component
 
 from chat import Chat
 from ui_backends.gradio_backend.component import GradioComponent
+from ui_backends.gradio_backend.utils.event_wrapper import EventWrapper
 from utils.chat_factory import ChatFactory
 
 
@@ -38,15 +39,19 @@ class ChatBox(GradioComponent):
                     self._ui_last_output = gr.Textbox(
                         show_label=False, placeholder="Most recent chat output", visible=False)
             with gr.Column(scale=1):
-                self._ui_submit_btn = gr.Button("Submit")
+                self._ui_submit_btn = gr.Button("Submit", variant="primary")
                 self._ui_clear_btn = gr.Button("Clear")
 
    # Connect the interface components
         submit_inputs: List[Component] = [self._ui_chat_input, self.instance_data]
         submit_outputs: List[Any] = [self._ui_chatbot, self._ui_last_output]
 
-        self._ui_chat_input.submit(self._submitText, inputs=submit_inputs, outputs=submit_outputs)
-        self._ui_submit_btn.click(self._submitText, inputs=submit_inputs, outputs=submit_outputs)
+        submit_prompt_wrapper = EventWrapper.create_wrapper(fn=self._submitText, inputs=submit_inputs, outputs=submit_outputs,
+                                                            pre_fn=lambda: (gr.update(interactive=False), gr.update(interactive=False)), pre_outputs=[self._ui_submit_btn, self._ui_clear_btn],
+                                                            post_fn=lambda: (gr.update(interactive=True), gr.update(interactive=True)), post_outputs=[self._ui_submit_btn, self._ui_clear_btn])
+
+        self._ui_submit_btn.click(fn=lambda x: not x, inputs=[submit_prompt_wrapper], outputs=[submit_prompt_wrapper])
+        self._ui_chat_input.submit(fn=lambda x: not x, inputs=[submit_prompt_wrapper], outputs=[submit_prompt_wrapper])
 
         clear_list: List[Component] = [self._ui_chat_input, self._ui_last_output]
         self._ui_clear_btn.click(fn=self._handleClearClick, inputs=[

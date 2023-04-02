@@ -11,7 +11,7 @@ logger = logging.getLogger(__file__)
 
 class EventRelay():
     @classmethod
-    def wrap_event(cls, fn: Callable = None, inputs: List[Component] = None, outputs: List[Component] = None, elem_id: str = None, name: str = "WrappedEvent", **kwargs) -> Component:
+    def create_relay(cls, fn: Callable = None, inputs: List[Component] = None, outputs: List[Component] = None, elem_id: str = None, name: str = "WrappedEvent", **kwargs) -> Component:
         '''
         Helper to create gradio input/output targets.
 

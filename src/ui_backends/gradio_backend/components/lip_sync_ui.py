@@ -44,8 +44,8 @@ class LipSyncUi(GradioComponent):
             self._ui_submit_btn = gr.Button("Run Lip Sync")
             self._ui_output_video = gr.Video(label="Lip Sync Output")
 
-        self._ui_update_player_relay = EventRelay.wrap_event(lambda x: [persist_file_event(x)],
-                                                             inputs=[self._ui_input_audio_file], outputs=[self._ui_input_audio_player])
+        self._ui_update_player_relay = EventRelay.create_relay(lambda x: [persist_file_event(x)],
+                                                               inputs=[self._ui_input_audio_file], outputs=[self._ui_input_audio_player])
 
         self._ui_submit_btn.click(fn=self._handle_lip_sync_clicked,
                                   inputs=[self._ui_input_audio_file, self._ui_input_video],

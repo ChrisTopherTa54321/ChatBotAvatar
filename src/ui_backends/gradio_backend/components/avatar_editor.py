@@ -97,7 +97,7 @@ class AvatarEditor(GradioComponent):
         refresh_inputs = refresh_components + [self._ui_voice_settings.instance_data, self.instance_data]
         refresh_outputs = refresh_components
 
-        self._relay_update_ui = EventRelay.wrap_event(
+        self._relay_update_ui = EventRelay.create_relay(
             fn=self._handle_refresh_trigger, inputs=refresh_inputs, outputs=refresh_outputs, name="AvatarEditorWrapped")
 
         self._ui_save_profile.click(fn=self._handle_save_profile_clicked,

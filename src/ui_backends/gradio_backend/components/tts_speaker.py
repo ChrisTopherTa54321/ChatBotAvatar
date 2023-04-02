@@ -44,7 +44,7 @@ class TtsSpeaker(GradioComponent):
             with gr.Column(scale=2):
                 self._ui_prompt_textbox = gr.Textbox(show_label=False, placeholder="Text to speak")
             with gr.Column(scale=1):
-                self._ui_submit_btn = gr.Button("Speak", variant="primary")
+                self._ui_submit_btn = gr.Button("Generate Speech", variant="primary")
                 self._ui_cancel_btn = gr.Button("Cancel Synthesis", visible=False)
                 self._ui_stream_checkbox = gr.Checkbox(value=True, label="Auto-Play/Stream")
                 if not self._ui_tts_settings:
@@ -58,11 +58,11 @@ class TtsSpeaker(GradioComponent):
             value=lambda: f"<div id='{uuid.uuid4().hex}'>Search Target!</div>", visible=False)
 
         # When this event is *output to* it will run its function and then output to its outputs
-        self._ui_play_streaming_relay = EventRelay.wrap_event(_js="start_audio_streamer", inputs=[
-                                                              self._ui_instance_id], name="Autoplayer Relay")
-        self._ui_full_audio_relay = EventRelay.wrap_event(
+        self._ui_play_streaming_relay = EventRelay.create_relay(_js="start_audio_streamer", inputs=[
+            self._ui_instance_id], name="Autoplayer Relay")
+        self._ui_full_audio_relay = EventRelay.create_relay(
             fn=self._full_audio_handler, inputs=[self.instance_data], outputs=[self._ui_full_audio, self._ui_cancel_btn, self._ui_submit_btn], name="Full Audio Relay")
-        self._ui_stream_audio_relay = EventRelay.wrap_event(
+        self._ui_stream_audio_relay = EventRelay.create_relay(
             fn=self._streaming_audio_handler, inputs=[self.instance_data, self._ui_play_streaming_relay],
             outputs=[self._ui_streaming_audio, self._ui_play_streaming_relay], elem_id="refresh_streaming",
             name="Stream Audio Relay")
