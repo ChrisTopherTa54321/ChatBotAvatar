@@ -3,13 +3,13 @@ from __future__ import annotations
 
 import logging
 import time
+import traceback
 from dataclasses import dataclass
 from functools import partial
-from multiprocessing.dummy import Event, Queue, Lock
+from multiprocessing.dummy import Event, Lock, Queue
 from multiprocessing.pool import AsyncResult, ThreadPool
 from queue import Empty
 from typing import Dict, List, Tuple
-import traceback
 
 import numpy as np
 
@@ -80,17 +80,25 @@ class TtsChunker:
         if self._pool_result:
             logger.warn("Cancelling ongoing synthesis (maybe? This probably doesn't work)")
             self._pool_cancel_event.set()
-            self._pool_result.wait()
-            self._pool_result = None
+            try:
+                while self._workq.get_nowait():
+                    self._workq.task_done()
+            except Empty as e:
+                pass
+
+            self._new_audio_avail_event.set()
+            self._audio_complete_event.set()
 
     def reset(self):
         ''' Resets the Queue to prepare for new audio '''
+        if self._pool_result:
+            self._pool_result.wait()
         self._read_chunk_id = 0
         self._audio.clear()
 
     def is_done(self) -> bool:
         ''' returns true if the Queue has no work '''
-        return self._pool_result is None
+        return self._workq.empty()
 
     def get_new_audio(self) -> Tuple[np.array, int]:
         '''
@@ -186,22 +194,20 @@ class TtsChunker:
         Background worker function to generate chunks of TTS audio
         '''
         logger.info(f"Worker {worker_id} starting up")
-        done: bool = False
-
-        while not done and not params.cancel_event.is_set():
+        while not params.workq.empty() and not params.cancel_event.is_set():
 
             # Grab the lock so we can grab multiple consecutive chunks
             with params.lock:
                 chunk_id: int = self._get_chunk_id()
                 text_to_speak: str = ""
                 word_cnt: int = 0
-                while (word_cnt < self._cur_chunk_words) and not done:
+                while (word_cnt < self._cur_chunk_words):
                     try:
                         work_item: TtsChunker.WorkQueueItem = params.workq.get(timeout=0.0)
                         text_to_speak += f" {work_item.text}"
                         word_cnt += len(TextUtils.split_words(work_item.text))
                     except Empty as e:
-                        done = True
+                        break
                     except Exception as e:
                         traceback.print_exception(e)
                         logger.error(f"WorkQueue Error: {e}")
@@ -222,6 +228,7 @@ class TtsChunker:
                 self._audio[chunk_id] = TtsChunker.AudioData(
                     text=text_to_speak, data=audio_data, sample_rate=sample_rate)
                 self._new_audio_avail_event.set()
+                params.workq.task_done()
                 elapsed = time.time() - start
                 logger.info(
                     f"Done working on {chunk_id}. Took {elapsed:.2f} to process {len(text_to_speak)} characters ({len(text_to_speak)/elapsed:.2f}cps)")

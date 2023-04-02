@@ -19,12 +19,13 @@ logger = logging.getLogger(__file__)
 class TtsSpeaker(GradioComponent):
     @dataclass
     class StateData:
-        queue: TtsChunker = None
+        chunker: TtsChunker = None
 
     def __init__(self, tts_settings: Optional[TtsSettings] = None):
         self._ui_state: gr.State = None
         self._ui_prompt_textbox: gr.Textbox = None
         self._ui_submit_btn: gr.Button = None
+        self._ui_cancel_btn: gr.Button = None
         self._ui_stream_checkbox: gr.Checkbox = None
         self._ui_tts_settings: TtsSettings = tts_settings
 
@@ -43,7 +44,8 @@ class TtsSpeaker(GradioComponent):
             with gr.Column(scale=2):
                 self._ui_prompt_textbox = gr.Textbox(show_label=False, placeholder="Text to speak")
             with gr.Column(scale=1):
-                self._ui_submit_btn = gr.Button("Speak")
+                self._ui_submit_btn = gr.Button("Speak", variant="primary")
+                self._ui_cancel_btn = gr.Button("Cancel Synthesis", visible=False)
                 self._ui_stream_checkbox = gr.Checkbox(value=True, label="Auto-Play/Stream")
                 if not self._ui_tts_settings:
                     with gr.Box():
@@ -59,7 +61,7 @@ class TtsSpeaker(GradioComponent):
         self._ui_play_streaming_relay = EventRelay.wrap_event(_js="start_audio_streamer", inputs=[
                                                               self._ui_instance_id], name="Autoplayer Relay")
         self._ui_full_audio_relay = EventRelay.wrap_event(
-            fn=self._full_audio_handler, inputs=[self.instance_data], outputs=[self._ui_full_audio], name="Full Audio Relay")
+            fn=self._full_audio_handler, inputs=[self.instance_data], outputs=[self._ui_full_audio, self._ui_cancel_btn, self._ui_submit_btn], name="Full Audio Relay")
         self._ui_stream_audio_relay = EventRelay.wrap_event(
             fn=self._streaming_audio_handler, inputs=[self.instance_data, self._ui_play_streaming_relay],
             outputs=[self._ui_streaming_audio, self._ui_play_streaming_relay], elem_id="refresh_streaming",
@@ -69,6 +71,12 @@ class TtsSpeaker(GradioComponent):
                                   inputs=[self.instance_data, self._ui_tts_settings.instance_data,
                                           self._ui_prompt_textbox, self._ui_stream_audio_relay, self._ui_full_audio_relay, self._ui_stream_checkbox],
                                   outputs=[self._ui_stream_audio_relay, self._ui_full_audio_relay])
+        self._ui_submit_btn.click(fn=lambda: (gr.update(visible=False), gr.update(visible=True)),
+                                  outputs=[self._ui_submit_btn, self._ui_cancel_btn])
+        self._ui_cancel_btn.click(fn=self._handle_cancel_tts, inputs=[self.instance_data])
+
+    def _handle_cancel_tts(self, inst_data: TtsSpeaker.StateData):
+        inst_data.chunker.cancel()
 
     def _handle_submit_click(self, inst_data: TtsSpeaker.StateData, tts_settings: TtsSettings.StateData, prompt: str, streaming_relay: bool, full_audio_relay: bool, streaming_enabled: bool) -> Tuple[EventRelay, EventRelay]:
         '''
@@ -80,14 +88,14 @@ class TtsSpeaker(GradioComponent):
             prompt (str): prompt to speak
             streaming_relay (bool): relay to toggle in order to trigger streaming audio
         '''
-        if inst_data.queue and not inst_data.queue.is_done():
-            logger.warn("Already a TTS queue!")
+        if inst_data.chunker and not inst_data.chunker.is_done():
+            logger.warn("Already a TTS chunker!")
             return (streaming_relay, full_audio_relay)
 
-        inst_data.queue = TtsChunker()
-        inst_data.queue.start_synthesis(prompt, tts_settings.voice)
+        inst_data.chunker = TtsChunker()
+        inst_data.chunker.start_synthesis(prompt, tts_settings.voice)
         logger.info("Waiting for first samples...")
-        success = inst_data.queue.wait_for_audio(timeout=240)
+        success = inst_data.chunker.wait_for_audio(timeout=240)
 
         if success:
             logger.info("First samples received! Triggering audio")
@@ -98,18 +106,18 @@ class TtsSpeaker(GradioComponent):
         return (streaming_relay, full_audio_relay)
 
     def _full_audio_handler(self, inst_data: TtsSpeaker.StateData):
-        success = inst_data.queue.wait_for_audio_complete()
+        success = inst_data.chunker.wait_for_audio_complete()
         if success:
-            all_audio_buffer, sampling_rate = inst_data.queue.get_all_audio()
+            all_audio_buffer, sampling_rate = inst_data.chunker.get_all_audio()
             all_audio = (sampling_rate, all_audio_buffer)
         else:
             all_audio = (None, None)
-        return [all_audio]
+        return [all_audio, gr.update(visible=False), gr.update(visible=True)]
 
     def _streaming_audio_handler(self, inst_data: TtsSpeaker.StateData, play_streaming_relay: bool):
-        success = inst_data.queue.wait_for_new_audio()
+        success = inst_data.chunker.wait_for_new_audio()
         if success:
-            audio_buffer, sampling_rate = inst_data.queue.get_new_audio()
+            audio_buffer, sampling_rate = inst_data.chunker.get_new_audio()
             return [gr.Audio.update(visible=True, value=(sampling_rate, audio_buffer)), not play_streaming_relay]
         else:
             return [gr.Audio.update(visible=False), play_streaming_relay]
