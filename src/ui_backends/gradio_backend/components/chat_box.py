@@ -91,5 +91,5 @@ class ChatBox(GradioComponent):
         return self._ui_state
 
     @property
-    def chat_response(self) -> Component:
+    def chat_response(self) -> gr.Textbox:
         return self._ui_last_output

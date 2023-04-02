@@ -28,3 +28,5 @@ class ChatTab(GradioTab):
                 self._ui_voice_settings = TtsSettings()
             with gr.Box():
                 self._tts_speaker = TtsSpeaker(tts_settings=self._ui_voice_settings)
+
+        self._ui_chatbox.chat_response.change(fn=lambda x:x, inputs=[self._ui_chatbox.chat_response], outputs=[self._tts_speaker.prompt] )
