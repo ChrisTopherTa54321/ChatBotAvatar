@@ -36,18 +36,25 @@ class EventRelay():
         assert gr.context.Context.block is not None, "wrap_func must be called within a 'gr.Blocks' 'with' context"
 
         trigger_checkbox: gr.Checkbox = gr.Checkbox(label=name, elem_id=elem_id, value=False, visible=False)
-        added_inputs = [trigger_checkbox]
-        added_outputs = [trigger_checkbox]
 
         def wrapped_func(*wrapped_inputs):
-            # Remove the added_inputs in reverse order
-            wrapped_inputs = list(wrapped_inputs)
-            checkbox_state = wrapped_inputs.pop()
-            ret = fn(*wrapped_inputs)
-            return list(ret) + [checkbox_state]
+            try:
+                ret = fn(*wrapped_inputs)
+            except Exception as e:
+                logger.error(e)
+                ret = [None]*len(outputs)
+            return EventRelay.as_list(ret)
 
-        new_inputs = (inputs if inputs else []) + added_inputs
-        new_outputs = (outputs if outputs else []) + added_outputs
-        trigger_checkbox.change(fn=wrapped_func if fn else None, inputs=new_inputs, outputs=new_outputs, **kwargs)
+        trigger_checkbox.change(fn=wrapped_func if fn else None, inputs=inputs, outputs=outputs, **kwargs)
 
         return trigger_checkbox
+
+    @classmethod
+    def as_list(cls, obj):
+        if obj is None:
+            return []
+        if isinstance(obj, tuple):
+            return list(obj)
+        if isinstance(obj, list):
+            return obj
+        return [obj]

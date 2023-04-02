@@ -11,6 +11,7 @@ from gradio.components import Component
 from ui_backends.gradio_backend.component import GradioComponent
 from ui_backends.gradio_backend.components.tts_settings import TtsSettings
 from ui_backends.gradio_backend.utils.event_relay import EventRelay
+from ui_backends.gradio_backend.utils.event_wrapper import EventWrapper
 from utils.tts_chunker import TtsChunker
 
 logger = logging.getLogger(__file__)
@@ -67,12 +68,14 @@ class TtsSpeaker(GradioComponent):
             outputs=[self._ui_streaming_audio, self._ui_play_streaming_relay], elem_id="refresh_streaming",
             name="Stream Audio Relay")
 
-        self._ui_submit_btn.click(fn=self._handle_submit_click,
-                                  inputs=[self.instance_data, self._ui_tts_settings.instance_data,
-                                          self._ui_prompt_textbox, self._ui_stream_audio_relay, self._ui_full_audio_relay, self._ui_stream_checkbox],
-                                  outputs=[self._ui_stream_audio_relay, self._ui_full_audio_relay])
-        self._ui_submit_btn.click(fn=lambda: (gr.update(visible=False), gr.update(visible=True)),
-                                  outputs=[self._ui_submit_btn, self._ui_cancel_btn])
+        submit_prompt_wrapper = EventWrapper.create_wrapper(fn=self._handle_submit_click,
+                                                            inputs=[self.instance_data, self._ui_tts_settings.instance_data,
+                                                                    self._ui_prompt_textbox, self._ui_stream_audio_relay, self._ui_full_audio_relay, self._ui_stream_checkbox],
+                                                            outputs=[self._ui_stream_audio_relay,
+                                                                     self._ui_full_audio_relay],
+                                                            pre_fn=lambda: (gr.update(visible=False), gr.update(visible=True)), pre_outputs=[self._ui_submit_btn, self._ui_cancel_btn])
+
+        self._ui_submit_btn.click(**EventWrapper.get_event_args(submit_prompt_wrapper))
         self._ui_cancel_btn.click(fn=self._handle_cancel_tts, inputs=[self.instance_data])
 
     def _handle_cancel_tts(self, inst_data: TtsSpeaker.StateData):

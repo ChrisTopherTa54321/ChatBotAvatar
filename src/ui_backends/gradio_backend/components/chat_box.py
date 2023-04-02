@@ -50,8 +50,8 @@ class ChatBox(GradioComponent):
                                                             pre_fn=lambda: (gr.update(interactive=False), gr.update(interactive=False)), pre_outputs=[self._ui_submit_btn, self._ui_clear_btn],
                                                             post_fn=lambda: (gr.update(interactive=True), gr.update(interactive=True)), post_outputs=[self._ui_submit_btn, self._ui_clear_btn])
 
-        self._ui_submit_btn.click(fn=lambda x: not x, inputs=[submit_prompt_wrapper], outputs=[submit_prompt_wrapper])
-        self._ui_chat_input.submit(fn=lambda x: not x, inputs=[submit_prompt_wrapper], outputs=[submit_prompt_wrapper])
+        self._ui_submit_btn.click(**EventWrapper.get_event_args(submit_prompt_wrapper))
+        self._ui_chat_input.submit(**EventWrapper.get_event_args(submit_prompt_wrapper))
 
         clear_list: List[Component] = [self._ui_chat_input, self._ui_last_output]
         self._ui_clear_btn.click(fn=self._handleClearClick, inputs=[

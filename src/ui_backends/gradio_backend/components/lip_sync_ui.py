@@ -1,19 +1,20 @@
 import logging
 import os
-import wave
+import tempfile
 import uuid
+import wave
 from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple
-import tempfile
 
 import gradio as gr
 import numpy as np
 from gradio.components import Component
 
 from ui_backends.gradio_backend.component import GradioComponent
-from utils.shared import Shared
-from ui_backends.gradio_backend.utils.helpers import persist_file_event
 from ui_backends.gradio_backend.utils.event_relay import EventRelay
+from ui_backends.gradio_backend.utils.event_wrapper import EventWrapper
+from ui_backends.gradio_backend.utils.helpers import persist_file_event
+from utils.shared import Shared
 
 logger = logging.getLogger(__file__)
 
@@ -41,15 +42,23 @@ class LipSyncUi(GradioComponent):
                 self._ui_input_audio_player = gr.Audio(label="Audio Preview", interactive=False)
                 self._ui_input_audio_file = gr.File(label="Audio File")
         with gr.Row():
-            self._ui_submit_btn = gr.Button("Run Lip Sync")
+            self._ui_submit_btn = gr.Button("Run Lip Sync", variant="primary")
             self._ui_output_video = gr.Video(label="Lip Sync Output")
+
+        lipsync_wrapper = EventWrapper.create_wrapper(fn=self._handle_lip_sync_clicked,
+                                                      inputs=[self._ui_input_audio_file, self._ui_input_video],
+                                                      outputs=[self._ui_output_video],
+                                                      pre_fn=lambda: (gr.Button.update(
+                                                          interactive=False, variant="secondary")),
+                                                      pre_outputs=[self._ui_submit_btn],
+                                                      post_fn=lambda: (gr.Button.update(
+                                                          interactive=True, variant="primary")),
+                                                      post_outputs=[self._ui_submit_btn])
 
         self._ui_update_player_relay = EventRelay.create_relay(lambda x: [persist_file_event(x)],
                                                                inputs=[self._ui_input_audio_file], outputs=[self._ui_input_audio_player])
 
-        self._ui_submit_btn.click(fn=self._handle_lip_sync_clicked,
-                                  inputs=[self._ui_input_audio_file, self._ui_input_video],
-                                  outputs=[self._ui_output_video])
+        self._ui_submit_btn.click(**EventWrapper.get_event_args(lipsync_wrapper))
 
         self._ui_input_audio_file.change(fn=lambda x: not x, inputs=[self._ui_update_player_relay],
                                          outputs=[self._ui_update_player_relay])
