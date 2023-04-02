@@ -11,7 +11,7 @@ from gradio.components import Component
 from ui_backends.gradio_backend.component import GradioComponent
 from ui_backends.gradio_backend.components.tts_settings import TtsSettings
 from ui_backends.gradio_backend.utils.event_relay import EventRelay
-from utils.tts_queue import TtsQueue
+from utils.tts_chunker import TtsChunker
 
 logger = logging.getLogger(__file__)
 
@@ -19,7 +19,7 @@ logger = logging.getLogger(__file__)
 class TtsSpeaker(GradioComponent):
     @dataclass
     class StateData:
-        queue: TtsQueue = None
+        queue: TtsChunker = None
 
     def __init__(self, tts_settings: Optional[TtsSettings] = None):
         self._ui_state: gr.State = None
@@ -84,7 +84,7 @@ class TtsSpeaker(GradioComponent):
             logger.warn("Already a TTS queue!")
             return (streaming_relay, full_audio_relay)
 
-        inst_data.queue = TtsQueue()
+        inst_data.queue = TtsChunker()
         inst_data.queue.start_synthesis(prompt, tts_settings.voice)
         logger.info("Waiting for first samples...")
         success = inst_data.queue.wait_for_audio(timeout=240)
