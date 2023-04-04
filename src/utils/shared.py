@@ -6,8 +6,8 @@ from ui import Ui
 from avatar.manager import Manager
 from utils.voice_factory import VoiceFactory
 from utils.chat_factory import ChatFactory
+from utils.image_gen_factory import ImageGenFactory
 from typing import Dict, Any, Type
-from image_gen import ImageGen
 import uuid
 from pathlib import Path
 import shutil
@@ -20,7 +20,6 @@ class Shared:
         self._root_dir: str = root_dir
         self._args: argparse.Namespace = self._parse_args()
 
-        self._image_gen: ImageGen = None
         self._ui: Ui = None
 
         self._data: Dict[Any, Any] = {}
@@ -32,8 +31,8 @@ class Shared:
         # Select Image Generator backend
         if args.image_gen_backend == "automatic1111":
             from image_gen_backends.automatic1111 import Automatic1111
-            self._image_gen = Automatic1111(api_host=args.image_gen_webui_host,
-                                            api_port=args.image_gen_webui_port)
+            ImageGenFactory.register_image_gen(Automatic1111.BACKEND_NAME, lambda: Automatic1111(
+                api_host=args.image_gen_webui_host, api_port=args.image_gen_webui_port))
         else:
             raise Exception(f"Unsupported ImageGen backend: {args.image_gen_backend}")
 
@@ -45,7 +44,7 @@ class Shared:
         else:
             raise Exception(f"Unsupported chat backend: {args.chat_backend}")
 
-        # Select TTS backend
+        # Select TTS backend (note: these return the same instance)
         if args.tts_backend == "azure":
             from tts_backends.azure_tts import AzureTts
             tts = AzureTts(api_key=args.azure_api_key, api_region=args.azure_api_region)
@@ -106,10 +105,6 @@ class Shared:
     @property
     def ui(self) -> Ui:
         return self._ui
-
-    @property
-    def image_gen(self) -> ImageGen:
-        return self._image_gen
 
     @property
     def avatar_manager(self) -> Manager:

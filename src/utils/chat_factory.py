@@ -8,20 +8,20 @@ from dataclasses import dataclass
 class ChatFactory:
     @dataclass
     class ChatInfo:
-        gen: Callable = None
+        factory: Callable = None
     _chat_map: Dict[str, ChatInfo] = {}
     _default_chat: ChatInfo = None
 
     @classmethod
-    def register_chat(cls, name: str, create_chat_func: Callable):
+    def register_chat(cls, name: str, factory_func: Callable):
         '''
         Registers a new chat backend.
 
         Args:
             name (str): name of the chat backend
-            create_chat_func (Callable): a Callable which returns a new instance of the Chat
+            factory_func (Callable): a Callable which returns a new instance of the Chat
         '''
-        cls._chat_map.setdefault(name, ChatFactory.ChatInfo()).gen = create_chat_func
+        cls._chat_map.setdefault(name, ChatFactory.ChatInfo()).factory = factory_func
 
     @classmethod
     def get_chat_list(cls):
@@ -35,4 +35,4 @@ class ChatFactory:
     def get_default_chat(cls) -> Chat:
         if cls._default_chat is None and cls._chat_map:
             cls._default_chat = next(iter(cls._chat_map.values()))
-        return cls._default_chat.gen()
+        return cls._default_chat.factory()

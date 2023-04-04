@@ -7,6 +7,8 @@ import webuiapi
 
 
 class Automatic1111(ImageGen):
+    BACKEND_NAME: str = "AUTOMATIC1111"
+
     def __init__(self, api_host: str, api_port: int):
         self._api: webuiapi.WebUIApi = webuiapi.WebUIApi(host=api_host, port=api_port)
 
