@@ -36,10 +36,11 @@ class TtsSettings(GradioComponent):
         voice_name_list = sorted(voice_map.keys())
         if len(voice_name_list) > 0:
             voice = VoiceFactory.get_voice(voice_name_list[0])
+            style_list = voice.get_styles_available()
         else:
             voice = None
-
-        style_list = voice.get_styles_available() if voice else []
+            voice_name_list = ["None"]
+            style_list = ["None"]
 
         with gr.Row():
             self._ui_voice_dropdown = gr.Dropdown(label="Voices", multiselect=False,
@@ -96,11 +97,12 @@ class TtsSettings(GradioComponent):
             state_data (TtsSettings.StateData): instance state data
         '''
         voice = VoiceFactory.get_voice(voice_name)
-        voice.set_style(voice_style)
-        if voice_pitch:
-            voice.set_pitch(voice_pitch)
-        if voice_rate:
-            voice.set_rate(voice_rate)
+        if voice:
+            voice.set_style(voice_style)
+            if voice_pitch:
+                voice.set_pitch(voice_pitch)
+            if voice_rate:
+                voice.set_rate(voice_rate)
         state_data.voice = voice
 
     def _on_voice_name_change(self, voice_name: str, state_data: TtsSettings.StateData) -> Tuple[Dict]:

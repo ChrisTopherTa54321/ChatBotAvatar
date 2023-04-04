@@ -68,7 +68,8 @@ class Shared:
             raise Exception(f"Unsupported UI backend: {args.ui_backend}")
 
         if args.clear_temp_on_launch:
-            shutil.rmtree(args.temp_dir)
+            shutil.rmtree(args.temp_dir, ignore_errors=True)
+        os.makedirs(args.temp_dir, exist_ok=True)
 
     @classmethod
     def init(cls, root_dir: str):

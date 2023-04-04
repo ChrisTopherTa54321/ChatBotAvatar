@@ -84,12 +84,16 @@ class FuncParamSettings(GradioComponent):
 
         if param.annotation is Image:
             new_component = gr.Image(label=param.name, value=param.default, interactive=True, **kwargs)
-        elif param.annotation in [str, float, int]:
+        elif param.annotation is str:
             if param.name in self._dropdown_items.keys():
                 new_component = gr.Dropdown(label=param.name, value=param.default, interactive=True, **kwargs)
             else:
                 new_component = gr.Textbox(
                     label=param.name, placeholder=param.default, interactive=True, **kwargs)
+        elif param.annotation is float:
+            new_component = gr.Number(label=param.name, value=param.default, interactive=True, precision=2, **kwargs)
+        elif param.annotation is int:
+            new_component = gr.Number(label=param.name, value=param.default, interactive=True, **kwargs)
         elif param.annotation is bool:
             new_component = gr.Checkbox(label=param.name, value=param.default, interactive=True, **kwargs)
         elif param.annotation is inspect._empty:
