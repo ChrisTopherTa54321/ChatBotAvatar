@@ -16,6 +16,7 @@ from ui_backends.gradio_backend.components.func_param_settings import \
 from ui_backends.gradio_backend.utils.event_relay import EventRelay
 from ui_backends.gradio_backend.utils.event_wrapper import EventWrapper
 from utils.image_gen_factory import ImageGenFactory
+from webuiapi import ControlNetUnit
 
 
 class ImageGenerator(GradioComponent):
@@ -30,8 +31,6 @@ class ImageGenerator(GradioComponent):
         self._ui_prompt_neg: gr.Textbox = None
         self._ui_txt2img_btn: gr.Button = None
         self._ui_img2img_btn: gr.Button = None
-        self._ui_posematch_btn: gr.Button = None
-        self._ui_poseonlymatch_btn: gr.Button = None
         self._ui_controlnet_settings: ControlNetSettings = None
         self._ui_state: gr.State = None
 
@@ -46,14 +45,11 @@ class ImageGenerator(GradioComponent):
         self._ui_prompt_neg = gr.Textbox(label="Negative Prompt")
         self._ui_txt2img_btn = gr.Button("Txt2Img", variant="primary")
         self._ui_img2img_btn = gr.Button("Img2Img", variant="primary")
-        self._ui_posematch_btn = gr.Button("PoseMatch", variant="primary")
-        self._ui_poseonlymatch_btn = gr.Button("PoseOnlyMatch", variant="primary")
 
         with gr.Accordion(label="ControlNet Parameters", open=False):
             self._ui_controlnet_settings = ControlNetSettings()
 
-        ui_btn_list = [self._ui_img2img_btn, self._ui_posematch_btn,
-                       self._ui_poseonlymatch_btn, self._ui_txt2img_btn]
+        ui_btn_list = [self._ui_img2img_btn, self._ui_txt2img_btn]
         disable_btn_ret = [gr.Button.update(interactive=False, variant="secondary")]
         enable_btn_ret = [gr.Button.update(interactive=True, variant="primary")]
 
@@ -69,55 +65,42 @@ class ImageGenerator(GradioComponent):
                             "post_outputs": [enable_buttons_relay]}
 
         txt2img_wrapper = EventWrapper.create_wrapper(fn=self._handle_txt2img_click,
-                                                      inputs=[self.instance_data, self._ui_prompt,
-                                                              self._ui_prompt_neg],
-                                                      outputs=self._ui_image_out, **disable_btn_args)
-        img2img_wrapper = EventWrapper.create_wrapper(fn=self._handle_img2img_click,
-                                                      inputs=[self.instance_data, self._ui_image_in,
+                                                      inputs=[self.instance_data, self._ui_controlnet_settings.instance_data,
                                                               self._ui_prompt, self._ui_prompt_neg],
                                                       outputs=self._ui_image_out, **disable_btn_args)
-        posematch_wrapper = EventWrapper.create_wrapper(fn=self._handle_posematch_click,
-                                                        inputs=[self.instance_data, self._ui_image_in,
-                                                                self._ui_prompt, self._ui_prompt_neg],
-                                                        outputs=self._ui_image_out, **disable_btn_args, name="posematch")
-        posematch_only_wrapper = EventWrapper.create_wrapper(fn=self._handle_poseonlymatch_click,
-                                                             inputs=[self.instance_data, self._ui_image_in,
-                                                                     self._ui_prompt, self._ui_prompt_neg],
-                                                             outputs=self._ui_image_out, **disable_btn_args)
+        img2img_wrapper = EventWrapper.create_wrapper(fn=self._handle_img2img_click,
+                                                      inputs=[self.instance_data, self._ui_controlnet_settings.instance_data,
+                                                              self._ui_image_in, self._ui_prompt, self._ui_prompt_neg],
+                                                      outputs=self._ui_image_out, **disable_btn_args)
 
         self._ui_txt2img_btn.click(**EventWrapper.get_event_args(txt2img_wrapper))
         self._ui_img2img_btn.click(**EventWrapper.get_event_args(img2img_wrapper))
-        self._ui_posematch_btn.click(**EventWrapper.get_event_args(posematch_wrapper))
-        self._ui_poseonlymatch_btn.click(**EventWrapper.get_event_args(posematch_only_wrapper))
 
-    def _handle_posematch_click(self, inst_data: ImageGenerator.StateData, input_image: np.ndarray, prompt: str, negative_prompt: str) -> Tuple[np.array]:
+    def _handle_txt2img_click(self, inst_data: ImageGenerator.StateData, controlnet_inst_data: ControlNetSettings.StateData, prompt: str, negative_prompt: str) -> Tuple[np.array]:
         if not inst_data.image_gen:
             inst_data.image_gen = ImageGenFactory.get_default_image_gen()
-        image = Image.fromarray(input_image)
-        result = inst_data.image_gen.gen_image(prompt=prompt, negative_prompt=negative_prompt,
-                                               input_image=image, match_pose=True, match_img=True)
+
+        if controlnet_inst_data.enabled:
+            controlnet_units = [ControlNetUnit(**controlnet_inst_data.func_params_data.init_args)]
+        else:
+            controlnet_units = None
+
+        result = inst_data.image_gen.gen_image(
+            prompt=prompt, negative_prompt=negative_prompt, controlnet_units=controlnet_units)
         return (result.image)
 
-    def _handle_poseonlymatch_click(self, inst_data: ImageGenerator.StateData, input_image: np.ndarray, prompt: str, negative_prompt: str) -> Tuple[np.array]:
+    def _handle_img2img_click(self, inst_data: ImageGenerator.StateData, controlnet_inst_data: ControlNetSettings.StateData, input_image: np.ndarray, prompt: str, negative_prompt: str) -> Tuple[np.array]:
         if not inst_data.image_gen:
             inst_data.image_gen = ImageGenFactory.get_default_image_gen()
-        image = Image.fromarray(input_image)
-        result = inst_data.image_gen.gen_image(prompt=prompt, negative_prompt=negative_prompt,
-                                               input_image=image, match_pose=True, match_img=False)
-        return (result.image)
 
-    def _handle_txt2img_click(self, inst_data: ImageGenerator.StateData, prompt: str, negative_prompt: str) -> Tuple[np.array]:
-        if not inst_data.image_gen:
-            inst_data.image_gen = ImageGenFactory.get_default_image_gen()
-        result = inst_data.image_gen.gen_image(prompt=prompt, negative_prompt=negative_prompt)
-        return (result.image)
+        if controlnet_inst_data.enabled:
+            controlnet_units = [ControlNetUnit(controlnet_inst_data.func_params_data)]
+        else:
+            controlnet_units = None
 
-    def _handle_img2img_click(self, inst_data: ImageGenerator.StateData, input_image: np.ndarray, prompt: str, negative_prompt: str) -> Tuple[np.array]:
-        if not inst_data.image_gen:
-            inst_data.image_gen = ImageGenFactory.get_default_image_gen()
         image = Image.fromarray(input_image)
         result = inst_data.image_gen.gen_image(
-            prompt=prompt, negative_prompt=negative_prompt, input_image=image, match_img=True)
+            prompt=prompt, negative_prompt=negative_prompt, input_image=image, controlnet_units=controlnet_units)
         return (result.image)
 
     @property

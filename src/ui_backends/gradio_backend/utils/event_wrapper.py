@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import traceback
 from typing import Any, Callable, Dict, List
 
 import gradio as gr
@@ -48,6 +49,7 @@ class EventWrapper():
                 func_outputs = pre_fn(*wrapped_pre_inputs) if pre_fn else []
             except Exception as e:
                 func_outputs = [None]*len(EventRelay.as_list(pre_outputs))
+                traceback.print_exception(e)
                 logger.error(e)
 
             return [not relay_toggle] + EventRelay.as_list(func_outputs)
@@ -58,6 +60,7 @@ class EventWrapper():
                 func_outputs = fn(*wrapped_call_inputs) if fn else []
             except Exception as e:
                 func_outputs = [None]*len(EventRelay.as_list(outputs))
+                traceback.print_exception(e)
                 logger.error(e)
 
             return [not relay_toggle] + EventRelay.as_list(func_outputs)
@@ -68,6 +71,7 @@ class EventWrapper():
                 func_outputs = post_fn(*wrapped_post_inputs) if post_fn else []
             except Exception as e:
                 func_outputs = [None]*len(EventRelay.as_list(post_outputs))
+                traceback.print_exception(e)
                 logger.error(e)
 
             return [relay_toggle] + EventRelay.as_list(func_outputs)
