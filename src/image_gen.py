@@ -23,3 +23,15 @@ class ImageGen(abc.ABC):
         Returns:
 
         '''
+
+    @abstractmethod
+    def get_controlnet_models(self) -> List[str]:
+        '''
+        Returns a list of available ControlNet models
+        '''
+
+    @abstractmethod
+    def get_controlnet_modules(self) -> List[str]:
+        '''
+        Returns a list of available ControlNet modules
+        '''

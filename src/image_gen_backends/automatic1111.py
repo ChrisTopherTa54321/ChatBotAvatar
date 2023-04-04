@@ -1,7 +1,7 @@
 import webuiapi
 from image_gen import ImageGen
 from typing_extensions import override
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 from PIL import Image
 import webuiapi
 
@@ -39,3 +39,13 @@ class Automatic1111(ImageGen):
     def _img2img(self, prompt: str, input_image: Image.Image, dimensions: Tuple[int, int], **kwargs):
         width, height = dimensions
         return self._api.img2img(images=[input_image], prompt=prompt, cfg_scale=6.5, denoising_strength=0.6, **kwargs)
+
+    @override
+    def get_controlnet_models(self) -> List[str]:
+        ret = self._api.custom_get("controlnet/model_list")
+        return ret['model_list']
+
+    @override
+    def get_controlnet_modules(self) -> List[str]:
+        ret = self._api.custom_get("controlnet/module_list")
+        return ret['module_list']
