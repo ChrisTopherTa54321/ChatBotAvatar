@@ -6,7 +6,7 @@ openai==0.27.0
 pyttsx3==2.90
 torch==1.13.1
 TTS==0.11.1
-PIL
+pillow
 sanitize-filename
 ./repos/wav2lip/
 ./repos/thin-plate-spline-motion
