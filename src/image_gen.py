@@ -1,7 +1,7 @@
 ''' Interface for an Image Generator backend '''
 import abc
 from abc import abstractmethod
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Callable
 
 from PIL import Image
 from webuiapi import ControlNetUnit
@@ -23,6 +23,18 @@ class ImageGen(abc.ABC):
 
         Returns:
 
+        '''
+
+    @abstractmethod
+    def get_txt2img_method(self) -> Callable:
+        '''
+        Returns the function of the underlying txt2img backend. For signature purposes only, will not be called
+        '''
+
+    @abstractmethod
+    def get_img2img_method(self) -> Callable:
+        '''
+        Returns the function of the underlying img2img backend. For signature purposes only, will not be called
         '''
 
     @abstractmethod

@@ -32,11 +32,18 @@ class ImageGenerator(GradioComponent):
         self._ui_txt2img_btn: gr.Button = None
         self._ui_img2img_btn: gr.Button = None
         self._ui_controlnet_settings: ControlNetSettings = None
+        self._ui_txt2img_settings: FuncParamSettings = None
+        self._ui_img2img_settings: FuncParamSettings = None
         self._ui_state: gr.State = None
 
         self._build_component()
 
     def _build_component(self):
+        image_gen: ImageGen = ImageGenFactory.get_default_image_gen()
+        if not image_gen:
+            gr.Markdown("No image generator detected")
+            return
+
         self._ui_state = gr.State(value=ImageGenerator.StateData)
         with gr.Row():
             self._ui_image_in = gr.Image(label="Input", interactive=True).style(height=256, width=256)
@@ -48,6 +55,12 @@ class ImageGenerator(GradioComponent):
 
         with gr.Accordion(label="ControlNet Parameters", open=False):
             self._ui_controlnet_settings = ControlNetSettings()
+
+        with gr.Accordion(label="Txt2Img Parameters", open=False):
+            self._ui_txt2img_settings = FuncParamSettings(image_gen.get_txt2img_method())
+
+        with gr.Accordion(label="Img2Img Parameters", open=False):
+            self._ui_img2img_settings = FuncParamSettings(image_gen.get_img2img_method())
 
         ui_btn_list = [self._ui_img2img_btn, self._ui_txt2img_btn]
         disable_btn_ret = [gr.Button.update(interactive=False, variant="secondary")]
@@ -65,18 +78,18 @@ class ImageGenerator(GradioComponent):
                             "post_outputs": [enable_buttons_relay]}
 
         txt2img_wrapper = EventWrapper.create_wrapper(fn=self._handle_txt2img_click,
-                                                      inputs=[self.instance_data, self._ui_controlnet_settings.instance_data,
+                                                      inputs=[self.instance_data, self._ui_controlnet_settings.instance_data, self._ui_txt2img_settings.instance_data,
                                                               self._ui_prompt, self._ui_prompt_neg],
                                                       outputs=self._ui_image_out, **disable_btn_args)
         img2img_wrapper = EventWrapper.create_wrapper(fn=self._handle_img2img_click,
-                                                      inputs=[self.instance_data, self._ui_controlnet_settings.instance_data,
+                                                      inputs=[self.instance_data, self._ui_controlnet_settings.instance_data, self._ui_img2img_settings.instance_data,
                                                               self._ui_image_in, self._ui_prompt, self._ui_prompt_neg],
                                                       outputs=self._ui_image_out, **disable_btn_args)
 
         self._ui_txt2img_btn.click(**EventWrapper.get_event_args(txt2img_wrapper))
         self._ui_img2img_btn.click(**EventWrapper.get_event_args(img2img_wrapper))
 
-    def _handle_txt2img_click(self, inst_data: ImageGenerator.StateData, controlnet_inst_data: ControlNetSettings.StateData, prompt: str, negative_prompt: str) -> Tuple[np.array]:
+    def _handle_txt2img_click(self, inst_data: ImageGenerator.StateData, controlnet_inst_data: ControlNetSettings.StateData, txt2img_inst_data: FuncParamSettings.StateData, prompt: str, negative_prompt: str) -> Tuple[np.array]:
         if not inst_data.image_gen:
             inst_data.image_gen = ImageGenFactory.get_default_image_gen()
 
@@ -86,10 +99,10 @@ class ImageGenerator(GradioComponent):
             controlnet_units = None
 
         result = inst_data.image_gen.gen_image(
-            prompt=prompt, negative_prompt=negative_prompt, controlnet_units=controlnet_units)
+            prompt=prompt, negative_prompt=negative_prompt, controlnet_units=controlnet_units, **txt2img_inst_data.init_args)
         return (result.image)
 
-    def _handle_img2img_click(self, inst_data: ImageGenerator.StateData, controlnet_inst_data: ControlNetSettings.StateData, input_image: np.ndarray, prompt: str, negative_prompt: str) -> Tuple[np.array]:
+    def _handle_img2img_click(self, inst_data: ImageGenerator.StateData, controlnet_inst_data: ControlNetSettings.StateData, img2img_inst_data: FuncParamSettings.StateData, input_image: np.ndarray, prompt: str, negative_prompt: str) -> Tuple[np.array]:
         if not inst_data.image_gen:
             inst_data.image_gen = ImageGenFactory.get_default_image_gen()
 
@@ -100,7 +113,7 @@ class ImageGenerator(GradioComponent):
 
         image = Image.fromarray(input_image)
         result = inst_data.image_gen.gen_image(
-            prompt=prompt, negative_prompt=negative_prompt, input_image=image, controlnet_units=controlnet_units)
+            prompt=prompt, negative_prompt=negative_prompt, input_image=image, controlnet_units=controlnet_units, **img2img_inst_data.init_args)
         return (result.image)
 
     @property

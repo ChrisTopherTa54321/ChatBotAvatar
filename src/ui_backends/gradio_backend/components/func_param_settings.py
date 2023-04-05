@@ -81,25 +81,30 @@ class FuncParamSettings(GradioComponent):
 
     def _get_component_for_param(self, param: inspect.Parameter, **kwargs) -> Optional[Component]:
         new_component: Component = None
+        # Determine component type by annotation or default value
+        comp_type = param.annotation
+        if comp_type is inspect._empty and param.default is not None:
+            comp_type = type(param.default)
 
-        if param.annotation is Image:
+        if comp_type is Image:
             new_component = gr.Image(label=param.name, value=param.default, interactive=True, **kwargs)
-        elif param.annotation is str:
+        elif comp_type is str:
             if param.name in self._dropdown_items.keys():
                 new_component = gr.Dropdown(label=param.name, value=param.default, interactive=True, **kwargs)
             else:
                 new_component = gr.Textbox(
                     label=param.name, placeholder=param.default, interactive=True, **kwargs)
-        elif param.annotation is float:
+        elif comp_type is float:
             new_component = gr.Number(label=param.name, value=param.default, interactive=True, precision=2, **kwargs)
-        elif param.annotation is int:
+        elif comp_type is int:
             new_component = gr.Number(label=param.name, value=param.default, interactive=True, **kwargs)
-        elif param.annotation is bool:
+        elif comp_type is bool:
             new_component = gr.Checkbox(label=param.name, value=param.default, interactive=True, **kwargs)
-        elif param.annotation is inspect._empty:
+        elif param.name == "self":
             pass
         else:
-            logger.warn(f"Unhandled parameter type [{param.annotation}] for [{param.name}]")
+            msg = f"Unable to display parameter [{param.name}]. Unhandled type: [{comp_type}]"
+            new_component = gr.Markdown(msg, **kwargs)
 
         return new_component
 
