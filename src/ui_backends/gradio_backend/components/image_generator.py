@@ -93,11 +93,8 @@ class ImageGenerator(GradioComponent):
         if not inst_data.image_gen:
             inst_data.image_gen = ImageGenFactory.get_default_image_gen()
 
-        if controlnet_inst_data.enabled:
-            controlnet_units = [ControlNetUnit(**controlnet_inst_data.func_params_data.init_args)]
-        else:
-            controlnet_units = None
-
+        controlnet_units = [ControlNetUnit(**info.func_params_state.init_args)
+                            for info in controlnet_inst_data.controlnet_items if info.enabled]
         result = inst_data.image_gen.gen_image(
             prompt=prompt, negative_prompt=negative_prompt, controlnet_units=controlnet_units, **txt2img_inst_data.init_args)
         return (result.image)
@@ -106,10 +103,8 @@ class ImageGenerator(GradioComponent):
         if not inst_data.image_gen:
             inst_data.image_gen = ImageGenFactory.get_default_image_gen()
 
-        if controlnet_inst_data.enabled:
-            controlnet_units = [ControlNetUnit(controlnet_inst_data.func_params_data)]
-        else:
-            controlnet_units = None
+        controlnet_units = [ControlNetUnit(**info.func_params_state.init_args)
+                            for info in controlnet_inst_data.controlnet_items if info.enabled]
 
         image = Image.fromarray(input_image)
         result = inst_data.image_gen.gen_image(
