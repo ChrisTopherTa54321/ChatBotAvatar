@@ -73,9 +73,6 @@ class AvatarEditor(GradioComponent):
                 self._ui_save_profile = gr.Button("Save Profile")
 
             with gr.Accordion(label="Motion Matched Videos"):
-                with gr.Tab("Existing"):
-                    self._ui_motion_matched_gallery = VideoGallery(label="Existing Motion Matched Videos", list_getter=self._get_motion_matched_video, list_getter_inputs=[
-                        self.instance_data])
                 with gr.Tab("Create New"):
                     with gr.Row():
                         with gr.Column(scale=1):
@@ -98,6 +95,9 @@ class AvatarEditor(GradioComponent):
                                 self._ui_out_video_name = gr.Textbox(
                                     label="Video Name", placeholder="Name for video within Avatar profile")
                                 self._ui_save_video_btn = gr.Button("Save Video")
+                with gr.Tab("Existing"):
+                    self._ui_motion_matched_gallery = VideoGallery(label="Existing Motion Matched Videos", list_getter=self._get_motion_matched_video, list_getter_inputs=[
+                        self.instance_data])
 
         refresh_components = [self._ui_filename_textbox, self._ui_name_textbox,
                               self.ui_profile_image, self._ui_voice_settings.update_ui_relay]

@@ -17,16 +17,12 @@ class Automatic1111(ImageGen):
         self._module_cache: List[str] = []
 
     @override
-    def gen_image(self, prompt: str, input_image: Image.Image = None, dimensions: Tuple[int, int] = (256, 256), controlnet_units: Optional[List[ControlNetUnit]] = None, **kwargs) -> Optional[str]:
+    def gen_image(self, prompt: str, input_image: Image.Image = None, controlnet_units: Optional[List[ControlNetUnit]] = None, **kwargs) -> Optional[str]:
         if input_image:
             kwargs['input_image'] = input_image
             func = self._api.img2img
         else:
             func = self._api.txt2img
-
-        width, height = dimensions
-        kwargs.setdefault('width', width)
-        kwargs.setdefault('height', height)
         kwargs['prompt'] = prompt
         kwargs['controlnet_units'] = controlnet_units
         return func(**kwargs)
