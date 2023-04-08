@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import logging
 import os
+import shutil
 from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple
 
@@ -13,15 +15,20 @@ from avatar.profile import Profile
 from avatar.video_info import VideoInfo
 from tts import Tts
 from ui_backends.gradio_backend.component import GradioComponent
+from ui_backends.gradio_backend.components.controlnet_settings import \
+    ControlNetSettings
 from ui_backends.gradio_backend.components.image_generator import \
     ImageGenerator
 from ui_backends.gradio_backend.components.motion_matcher import MotionMatcher
 from ui_backends.gradio_backend.components.tts_settings import TtsSettings
 from ui_backends.gradio_backend.components.video_gallery import VideoGallery
+from ui_backends.gradio_backend.utils.app_data import AppData
 from ui_backends.gradio_backend.utils.event_relay import EventRelay
-from utils.image_utils import ImageUtils
+from ui_backends.gradio_backend.utils.event_wrapper import EventWrapper
+from utils.image_gen_factory import ImageGenFactory
 from utils.shared import Shared
-import shutil
+
+logger = logging.getLogger(__file__)
 
 
 class AvatarEditor(GradioComponent):
@@ -35,8 +42,8 @@ class AvatarEditor(GradioComponent):
         self._ui_profile_image: gr.Image = None
         self._ui_motion_matched_gallery: VideoGallery = None
 
-        self._ui_create_avail_driving_video_gallery: VideoGallery = None
-        self._ui_create_driving_src_imagegen: ImageGenerator = None
+        self._ui_new_driving_vid_gallery: VideoGallery = None
+        self._ui_new_driving_src_imagegen: ImageGenerator = None
 
         self._ui_motion_matcher: MotionMatcher = None
         self._ui_out_video_name: gr.Textbox = None
@@ -74,12 +81,12 @@ class AvatarEditor(GradioComponent):
                         with gr.Column(scale=1):
                             with gr.Box():
                                 gr.Markdown("Step 1: Select a driving video")
-                                self._ui_create_avail_driving_video_gallery = VideoGallery(
+                                self._ui_new_driving_vid_gallery = VideoGallery(
                                     label="", list_getter=self._get_driving_videos)
                         with gr.Column(scale=1):
                             with gr.Box():
                                 gr.Markdown("Step 2: Generate an image matching the driving video pose")
-                                self._ui_create_driving_src_imagegen = ImageGenerator()
+                                self._ui_new_driving_src_imagegen = ImageGenerator()
                     with gr.Row():
                         with gr.Column(scale=1):
                             with gr.Box():
@@ -97,7 +104,7 @@ class AvatarEditor(GradioComponent):
         refresh_inputs = refresh_components + [self._ui_voice_settings.instance_data, self.instance_data]
         refresh_outputs = refresh_components
 
-        self._relay_update_ui = EventRelay.create_relay(
+        self._relay_update_ui = EventWrapper.create_wrapper(
             fn=self._handle_refresh_trigger, inputs=refresh_inputs, outputs=refresh_outputs, name="AvatarEditorWrapped")
 
         self._ui_save_profile.click(fn=self._handle_save_profile_clicked,
@@ -107,14 +114,74 @@ class AvatarEditor(GradioComponent):
         self._ui_save_video_btn.click(fn=self._handle_save_video_clicked, inputs=[
                                       self._ui_motion_matcher.output_video, self._ui_out_video_name, self.instance_data])
 
-        self._ui_create_driving_src_imagegen.output_image.change(
-            fn=lambda x: x, inputs=[self._ui_create_driving_src_imagegen.output_image], outputs=[self._ui_motion_matcher.input_image])
+        self._ui_new_driving_src_imagegen.output_image.change(
+            fn=lambda x: x, inputs=[self._ui_new_driving_src_imagegen.output_image], outputs=[self._ui_motion_matcher.input_image])
 
-        self._ui_create_avail_driving_video_gallery.gallery_component.select(fn=self._handle_driving_vid_select, inputs=[
-                                                                             self._ui_create_avail_driving_video_gallery.instance_data], outputs=[self._ui_create_driving_src_imagegen.input_image, self._ui_motion_matcher.input_video, self._ui_out_video_name])
+        controlnet_settings = self._ui_new_driving_src_imagegen.controlnet_settings
+        self._ui_new_driving_vid_gallery.select_event_relay.change(fn=self._handle_driving_vid_select,
+                                                                   inputs=[self._ui_new_driving_vid_gallery.instance_data,
+                                                                           controlnet_settings.instance_data, controlnet_settings.restore_state_relay],
+                                                                   outputs=[self._ui_new_driving_src_imagegen.input_image, self._ui_motion_matcher.input_video, self._ui_out_video_name,
+                                                                            controlnet_settings.restore_state_relay])
 
-    def _handle_driving_vid_select(seof, gallery_data: VideoGallery.StateData):
-        return (gallery_data.selected_video.thumbnail, gallery_data.selected_video.path, os.path.basename(gallery_data.selected_video.path))
+        # Schedule filling in defaults at client run. Use an EventRelay because for some reason Gradio won't trigger
+        # the load event if any of the 'settings' instance data is in its input list
+        set_defaults_relay: EventWrapper = EventWrapper.create_wrapper(fn=self._set_defaults,
+                                                                       inputs=[
+                                                                           self.instance_data, controlnet_settings.instance_data, controlnet_settings.restore_state_relay],
+                                                                       outputs=[controlnet_settings.restore_state_relay])
+
+        AppData.get_instance().app.load(fn=lambda x: not x, inputs=[set_defaults_relay], outputs=[set_defaults_relay])
+
+    def _set_defaults(self, inst_data: AvatarEditor.StateData, controlnet_data: ControlNetSettings.StateData, controlnet_refresh_relay: bool):
+
+        @dataclass
+        class ControlNetDefault:
+            model: str
+            module: str
+            params: Dict[str, Any]
+
+        wanted_defaults: List[ControlNetDefault] = [
+            ControlNetDefault(model="normal", module="normal_map", params={"weight": 0.4}),
+            ControlNetDefault(model="depth", module="depth", params={"weight": 0.4}),
+        ]
+        image_gen_factory = ImageGenFactory.get_default_image_gen()
+        models = image_gen_factory.get_controlnet_models()
+        modules = image_gen_factory.get_controlnet_modules()
+
+        item_idx: int = 0
+        for idx, default in enumerate(wanted_defaults):
+            if default.module and default.module not in modules:
+                logger.warning(f"Default ControlNet module [{default.module}] not found")
+                continue
+
+            model_results = [x for x in models if default.model in x]
+            if len(model_results) == 0:
+                logger.warning(f"Default ControlNet model [{default.model}] not found")
+                continue
+            if len(model_results) > 1:
+                logger.warning(f"Ambiguous default model [{default.model}], available. Could be: [{model_results}]")
+
+            full_model_name = model_results[0]
+
+            # Ensure there are enough controlnet units for the defaults
+            if item_idx > len(controlnet_data.controlnet_items) - 1:
+                controlnet_data.add_empty_unit()
+
+            default_settings = {"model": full_model_name, "module": default.module}
+            default_settings.update(default.params)
+
+            item = controlnet_data.controlnet_items[item_idx]
+            item.enabled = True
+            item.func_params_state.init_args.update(default_settings)
+            item_idx += 1
+
+        return (not controlnet_refresh_relay)
+
+    def _handle_driving_vid_select(self, gallery_data: VideoGallery.StateData, controlnet_data: ControlNetSettings.StateData, controlnet_restore_relay: bool) -> [gr.Image, gr.Video, gr.Textbox, EventRelay]:
+        for unit in controlnet_data.controlnet_items:
+            unit.func_params_state.init_args["input_image"] = gallery_data.selected_video.thumbnail
+        return (gallery_data.selected_video.thumbnail, gallery_data.selected_video.path, os.path.basename(gallery_data.selected_video.path), not controlnet_restore_relay)
 
     def _handle_save_video_clicked(self, input_video_path: str, output_video_name: str, editor_state_data: AvatarEditor.StateData):
         output_path = os.path.join(editor_state_data.profile.motion_matched_video_directory, output_video_name)
