@@ -52,8 +52,8 @@ class ChatBox(GradioComponent):
         submit_outputs: List[Any] = [self._ui_chatbot, self._ui_last_output]
 
         submit_prompt_wrapper = EventWrapper.create_wrapper(fn=self._submitText, inputs=submit_inputs, outputs=submit_outputs,
-                                                            pre_fn=lambda: (gr.update(interactive=False), gr.update(interactive=False)), pre_outputs=[self._ui_submit_btn, self._ui_clear_btn],
-                                                            post_fn=lambda: (gr.update(interactive=True), gr.update(interactive=True)), post_outputs=[self._ui_submit_btn, self._ui_clear_btn])
+                                                            pre_fn=lambda: 4*(gr.update(interactive=False),), pre_outputs=[self._ui_submit_btn, self._ui_clear_btn, self._ui_retry_btn, self._ui_undo_btn],
+                                                            post_fn=lambda: 4*(gr.update(interactive=True), ), post_outputs=[self._ui_submit_btn, self._ui_clear_btn, self._ui_retry_btn, self._ui_undo_btn])
 
         self._ui_submit_btn.click(**EventWrapper.get_event_args(submit_prompt_wrapper))
         self._ui_chat_input.submit(**EventWrapper.get_event_args(submit_prompt_wrapper))

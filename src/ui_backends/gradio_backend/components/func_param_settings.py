@@ -57,12 +57,13 @@ class FuncParamSettings(GradioComponent):
     def _build_component(self):
         self._ui_state = gr.State(value=FuncParamSettings.StateData)
         component_list: List[Component] = [comp.component for comp in self._components.values()]
+        half_idx = len(component_list)//2
         with gr.Row():
             with gr.Column():
-                for comp in component_list[::2]:
+                for comp in component_list[:half_idx]:
                     comp.render()
             with gr.Column():
-                for comp in component_list[1::2]:
+                for comp in component_list[half_idx:]:
                     comp.render()
 
         self._restore_state_relay = EventRelay.create_relay(

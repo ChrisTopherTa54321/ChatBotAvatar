@@ -21,7 +21,10 @@ class Automatic1111(ImageGen):
             func = self._api.img2img
         else:
             func = self._api.txt2img
-        kwargs['width'], kwargs['height'] = dimensions
+
+        width, height = dimensions
+        kwargs.setdefault('width', width)
+        kwargs.setdefault('height', height)
         kwargs['prompt'] = prompt
         kwargs['controlnet_units'] = controlnet_units
         return func(**kwargs)
