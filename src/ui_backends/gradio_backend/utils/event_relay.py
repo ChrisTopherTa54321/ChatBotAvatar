@@ -1,10 +1,22 @@
-''' Helper to wrap a Gradio event callback within another function '''
+''' Helper to wrap a Gradio event callback within another function
+
+    !!!DO NOT USE THIS DIRECTLY!!!
+
+    Use EventWrapper if you need a relay.
+    At least as of 3.21.0 gradio will get stuck in an infinite loop depending on
+    the EventRelay output types. EventWrapper contains a workaround for this, so
+    should be used even if you just need a single relay.
+ '''
 from __future__ import annotations
-from typing import Tuple, List, Callable
-from typing_extensions import override
+
+import inspect
+import logging
+import os
+from typing import Callable, List, Tuple
+
 import gradio as gr
 from gradio.components import Component
-import logging
+from typing_extensions import override
 
 logger = logging.getLogger(__file__)
 
@@ -35,10 +47,18 @@ class EventRelay():
         '''
         assert gr.context.Context.block is not None, "wrap_func must be called within a 'gr.Blocks' 'with' context"
 
+        stack_info = inspect.stack()
+        for frame in stack_info:
+            if os.path.basename(frame.filename).startswith("event_"):
+                continue
+            break
+        caller_info = f"{os.path.basename(frame.filename)}:{frame.lineno} {frame.function}"
+
         trigger_checkbox: gr.Checkbox = gr.Checkbox(label=name, elem_id=elem_id, value=False, visible=False)
 
         def wrapped_func(*wrapped_inputs):
             try:
+                capture_caller_info = caller_info
                 ret = fn(*wrapped_inputs)
             except Exception as e:
                 logger.error(e)

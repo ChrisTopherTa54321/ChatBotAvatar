@@ -16,6 +16,7 @@ from ui_backends.gradio_backend.components.func_param_settings import \
     FuncParamSettings
 from ui_backends.gradio_backend.utils.app_data import AppData
 from ui_backends.gradio_backend.utils.event_relay import EventRelay
+from ui_backends.gradio_backend.utils.event_wrapper import EventWrapper
 from utils.image_gen_factory import ImageGenFactory
 
 logger = logging.getLogger(__file__)
@@ -38,8 +39,13 @@ class ControlNetSettings(GradioComponent):
         def __post_init__(self):
             self.controlnet_items.append(ControlNetSettings.MultiControlNetItem())
 
+        def add_empty_unit(self):
+            ''' Append an empty ControlNet unit to the list '''
+            self.controlnet_items.append(ControlNetSettings.MultiControlNetItem())
+
     def __init__(self):
         self._ui_state: gr.State = None
+        self._restore_state_relay: EventWrapper = None
         self._ui_func_settings: FuncParamSettings = None
         self._ui_enabled_chkbox: gr.Checkbox = None
         self._ui_prev_btn: gr.Button = None
@@ -49,6 +55,7 @@ class ControlNetSettings(GradioComponent):
 
     def _build_component(self):
         self._ui_state = gr.State(value=ControlNetSettings.StateData)
+
         with gr.Box():
             self._ui_idx_text = gr.Markdown(ControlNetSettings._get_index_string(ControlNetSettings.StateData()))
             self._ui_prev_btn = gr.Button("Prev")
@@ -59,6 +66,11 @@ class ControlNetSettings(GradioComponent):
         controlnet_dropdowns = {"model": ControlNetSettings._get_controlnet_models,
                                 "module": ControlNetSettings._get_controlnet_modules}
         self._ui_func_settings = FuncParamSettings(ControlNetUnit.__init__, dropdowns=controlnet_dropdowns)
+
+        self._restore_state_relay = EventWrapper.create_wrapper(
+            fn=self._restore_state, inputs=[
+                self.instance_data, self._ui_func_settings.instance_data, self._ui_func_settings.restore_state_relay],
+            outputs=[self._ui_prev_btn, self._ui_enabled_chkbox, self._ui_idx_text, self._ui_func_settings.restore_state_relay])
 
         self._ui_enabled_chkbox.change(fn=self._handle_enabled_change, inputs=[
                                        self.instance_data, self._ui_func_settings.instance_data, self._ui_enabled_chkbox], outputs=[self._ui_idx_text])
@@ -81,6 +93,19 @@ class ControlNetSettings(GradioComponent):
         ''' Pass the FuncParamSettings instance data through to the ControlNetSettings instance data '''
         inst_data.ui_func_params_data = func_params_inst_data
 
+    def _restore_state(self, inst_data: ControlNetSettings.StateData, func_params_inst_data: FuncParamSettings.StateData, refresh_func_param_relay: bool):
+        inst_data.selected = 0
+        # Update the func param settings with the new selection
+        func_params_inst_data.__dict__.update(
+            inst_data.controlnet_items[inst_data.selected_idx].func_params_state.__dict__)
+
+        outputs = [gr.Button.update(variant="secondary"),
+                   inst_data.controlnet_items[inst_data.selected_idx].enabled,
+                   ControlNetSettings._get_index_string(inst_data),
+                   not refresh_func_param_relay]
+
+        return outputs
+
     def _handle_next_controlnet(self, inst_data: ControlNetSettings.StateData, func_params_inst_data: FuncParamSettings.StateData, enabled: bool, restore_state_relay: bool) -> EventRelay:
         '''
         Handle the 'next' button to select the next ControlNet settings
@@ -97,10 +122,7 @@ class ControlNetSettings(GradioComponent):
             # Unless there were no changes to the current one, in which case ignore the click
             if len(func_params_inst_data.init_args) == 0:
                 return [gr.Button.update(), enabled, ControlNetSettings._get_index_string(inst_data), restore_state_relay]
-
-            # Add an empty unit to the list
-            new_data = ControlNetSettings.MultiControlNetItem()
-            inst_data.controlnet_items.append(new_data)
+            inst_data.add_empty_unit()
 
         # Save the current state and update func_params_state with the new state
         inst_data.controlnet_items[inst_data.selected_idx].func_params_state.__dict__.update(
@@ -165,6 +187,10 @@ class ControlNetSettings(GradioComponent):
     @property
     def instance_data(self) -> gr.State:
         return self._ui_state
+
+    @property
+    def restore_state_relay(self) -> Component:
+        return self._restore_state_relay
 
     @property
     def models_dropdown(self) -> gr.Dropdown:

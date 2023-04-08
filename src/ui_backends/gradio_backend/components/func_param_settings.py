@@ -12,7 +12,7 @@ import gradio as gr
 from gradio.components import Component
 from PIL import Image
 
-from ui_backends.gradio_backend.utils.event_relay import EventRelay
+from ui_backends.gradio_backend.utils.event_wrapper import EventWrapper
 from ui_backends.gradio_backend.component import GradioComponent
 from ui_backends.gradio_backend.utils.app_data import AppData
 
@@ -66,13 +66,14 @@ class FuncParamSettings(GradioComponent):
                 for comp in component_list[half_idx:]:
                     comp.render()
 
-        self._restore_state_relay = EventRelay.create_relay(
+        self._restore_state_relay = EventWrapper.create_wrapper(
             fn=self._restore_state, inputs=[self.instance_data], outputs=component_list)
 
         for comp_name, comp in self._components.items():
             comp.component.change(fn=partial(self._update_args_on_ui_change, comp_name,
                                              type(comp.component)), inputs=[self.instance_data, comp.component])
 
+        # Schedule filling in the drop-down choices to occur on page load
         dropdown_outputs = [self._components[name].component for name in self._dropdown_items.keys()]
         AppData.get_instance().app.load(fn=self._refresh_dropdowns_handler, inputs=dropdown_outputs, outputs=dropdown_outputs)
 
