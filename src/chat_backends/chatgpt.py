@@ -51,6 +51,11 @@ class ChatGpt(Chat):
         self._history.append(role)
 
     @override
+    def pop_history_item(self, idx: int) -> Tuple[str, str]:
+        item = self._history.pop(idx)
+        return (item.role, item.message)
+
+    @override
     def send_text(self, text: str) -> str:
         message_list = TextUtils.split_speakers(text, initial_speaker=Chat.Roles.USER)
         has_user = False

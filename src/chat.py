@@ -21,7 +21,6 @@ class Chat(abc.ABC):
         Returns:
             Optional[str]: the chat interface's response
         '''
-        pass
 
     @abstractmethod
     def get_history(self) -> List[Tuple[str, str]]:
@@ -31,11 +30,21 @@ class Chat(abc.ABC):
         Returns:
             List[Tuple[str, str]]: List of (role, message) pairs
         '''
-        pass
+
+    @abstractmethod
+    def pop_history_item(self, idx: int) -> Tuple[str, str]:
+        '''
+        Removes and returns an item from the history, by indexx
+
+        Args:
+            idx (int): index of history item to remove
+
+        Returns:
+            Tuple[str, str]: the item removed
+        '''
 
     @abstractmethod
     def reset(self) -> None:
         '''
         Resets chat to its initial state
         '''
-        pass
