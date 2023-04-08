@@ -19,6 +19,7 @@ class EventWrapper():
                        fn: Callable = None, inputs: List[Component] = None, outputs: List[Component] = None,
                        pre_fn: Callable = None, pre_inputs: List[Component] = None, pre_outputs: List[Component] = None,
                        post_fn: Callable = None, post_inputs: List[Component] = None, post_outputs: List[Component] = None,
+                       pre_fn_delay: int = 0, fn_delay: int = 0, post_fn_delay: int = 0,
                        elem_id: str = None, name: str = "WrappedEvent", **kwargs) -> Component:
         '''
         Helper to wrap a gradio event with pre- and post events.
@@ -35,6 +36,9 @@ class EventWrapper():
             post_fn (Callable, optional): Function to call after calling the primary function
             post_inputs (List[Component], optional): list of inputs for the pre-function call
             post_outputs (List[Component], optional): list of outputs for the post-function call
+            pre_fn_delay (int, optional): number of extra hops to insert before calling pre_fn
+            fn_delay (int, optional): number of extra hops to insert between pre_fn and fn
+            post_fn_delay (int, optional): number of extra hops to insert between fn and post_fn
             elem_id (str, optional): Element Id to give the primary function call's dummy object.
             name (str, optional): Description for debugging purposes
 
@@ -86,15 +90,27 @@ class EventWrapper():
         post_relay: EventRelay = EventRelay.create_relay(
             fn=post_func_wrapper, inputs=post_inputs, outputs=post_outputs, name=f"post_{name}_relay")
 
+        for i in range(post_fn_delay):
+            post_relay = EventRelay.create_relay(fn=lambda dummy, relay: (dummy, not relay),
+                                                 inputs=[fake_relay, post_relay], outputs=[fake_relay, post_relay])
+
         call_inputs = [fake_relay, post_relay] + EventRelay.as_list(inputs)
         call_outputs = [fake_relay, post_relay] + EventRelay.as_list(outputs)
         call_relay: EventRelay = EventRelay.create_relay(
             fn=call_func_wrapper, inputs=call_inputs, outputs=call_outputs, name=f"call_{name}_relay", elem_id=elem_id, **kwargs)
 
+        for i in range(fn_delay):
+            call_relay = EventRelay.create_relay(fn=lambda dummy, relay: (dummy, not relay),
+                                                 inputs=[fake_relay, call_relay], outputs=[fake_relay, call_relay])
+
         pre_inputs = [fake_relay, call_relay] + EventRelay.as_list(pre_inputs)
         pre_outputs = [fake_relay, call_relay] + EventRelay.as_list(pre_outputs)
         pre_relay: EventRelay = EventRelay.create_relay(
             fn=pre_func_wrapper, inputs=pre_inputs, outputs=pre_outputs, name=f"pre_{name}_relay")
+
+        for i in range(pre_fn_delay):
+            pre_fn_relay = EventRelay.create_relay(fn=lambda dummy, relay: (dummy, not relay),
+                                                   inputs=[fake_relay, pre_fn_relay], outputs=[fake_relay, pre_fn_relay])
 
         return pre_relay
 

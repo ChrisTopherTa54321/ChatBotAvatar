@@ -13,6 +13,8 @@ class Automatic1111(ImageGen):
 
     def __init__(self, api_host: str, api_port: int):
         self._api: webuiapi.WebUIApi = webuiapi.WebUIApi(host=api_host, port=api_port)
+        self._model_cache: List[str] = []
+        self._module_cache: List[str] = []
 
     @override
     def gen_image(self, prompt: str, input_image: Image.Image = None, dimensions: Tuple[int, int] = (256, 256), controlnet_units: Optional[List[ControlNetUnit]] = None, **kwargs) -> Optional[str]:
@@ -31,13 +33,17 @@ class Automatic1111(ImageGen):
 
     @override
     def get_controlnet_models(self) -> List[str]:
-        ret = self._api.custom_get("controlnet/model_list")
-        return ret['model_list']
+        if len(self._model_cache) == 0:
+            ret = self._api.custom_get("controlnet/model_list")
+            self._model_cache = ret["model_list"]
+        return self._model_cache.copy()
 
     @override
     def get_controlnet_modules(self) -> List[str]:
-        ret = self._api.custom_get("controlnet/module_list")
-        return ret['module_list']
+        if len(self._module_cache) == 0:
+            ret = self._api.custom_get("controlnet/module_list")
+            self._module_cache = ret["module_list"]
+        return self._module_cache.copy()
 
     @override
     def get_txt2img_method(self) -> Callable:

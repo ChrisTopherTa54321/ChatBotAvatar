@@ -120,21 +120,30 @@ class AvatarEditor(GradioComponent):
         controlnet_settings = self._ui_new_driving_src_imagegen.controlnet_settings
         self._ui_new_driving_vid_gallery.select_event_relay.change(fn=self._handle_driving_vid_select,
                                                                    inputs=[self._ui_new_driving_vid_gallery.instance_data,
-                                                                           controlnet_settings.instance_data, controlnet_settings.restore_state_relay],
+                                                                           controlnet_settings.instance_data, self._ui_new_driving_src_imagegen.restore_state_relay],
                                                                    outputs=[self._ui_new_driving_src_imagegen.input_image, self._ui_motion_matcher.input_video, self._ui_out_video_name,
-                                                                            controlnet_settings.restore_state_relay])
+                                                                            self._ui_new_driving_src_imagegen.restore_state_relay])
 
-        # Schedule filling in defaults at client run. Use an EventRelay because for some reason Gradio won't trigger
-        # the load event if any of the 'settings' instance data is in its input list
-        set_defaults_relay: EventWrapper = EventWrapper.create_wrapper(fn=self._set_defaults,
-                                                                       inputs=[
-                                                                           self.instance_data, controlnet_settings.instance_data, controlnet_settings.restore_state_relay],
-                                                                       outputs=[controlnet_settings.restore_state_relay])
+        # Schedule filling in defaults at client run. Use two relays, because for some reason Gradio is passing a different controlnet_settings.instance_data the first
+        # call so just let the first relay consume the incorrect data and trigger the real call
+        set_defaults_relay2: EventWrapper = EventWrapper.create_wrapper(fn=self._set_controlnet_defaults,
+                                                                        inputs=[controlnet_settings.instance_data],
+                                                                        post_fn=lambda x: not x,
+                                                                        post_inputs=[
+                                                                            self._ui_new_driving_src_imagegen.restore_state_relay],
+                                                                        post_outputs=[self._ui_new_driving_src_imagegen.restore_state_relay])
+
+        # # the load event if any of the 'settings' instance data is in its input list
+        set_defaults_relay: EventWrapper = EventWrapper.create_wrapper(fn=self._set_controlnet_defaults,
+                                                                       inputs=[controlnet_settings.instance_data],
+                                                                       post_fn=lambda x, y: (not x, not y),
+                                                                       post_inputs=[
+                                                                           self._ui_new_driving_src_imagegen.restore_state_relay, set_defaults_relay2],
+                                                                       post_outputs=[self._ui_new_driving_src_imagegen.restore_state_relay, set_defaults_relay2])
 
         AppData.get_instance().app.load(fn=lambda x: not x, inputs=[set_defaults_relay], outputs=[set_defaults_relay])
 
-    def _set_defaults(self, inst_data: AvatarEditor.StateData, controlnet_data: ControlNetSettings.StateData, controlnet_refresh_relay: bool):
-
+    def _set_controlnet_defaults(self, controlnet_data: ControlNetSettings.StateData):
         @dataclass
         class ControlNetDefault:
             model: str
@@ -176,12 +185,13 @@ class AvatarEditor(GradioComponent):
             item.func_params_state.init_args.update(default_settings)
             item_idx += 1
 
-        return (not controlnet_refresh_relay)
+        return
 
-    def _handle_driving_vid_select(self, gallery_data: VideoGallery.StateData, controlnet_data: ControlNetSettings.StateData, controlnet_restore_relay: bool) -> [gr.Image, gr.Video, gr.Textbox, EventRelay]:
+    def _handle_driving_vid_select(self, gallery_data: VideoGallery.StateData, controlnet_data: ControlNetSettings.StateData, imggen_restore_relay: bool) -> [gr.Image, gr.Video, gr.Textbox, EventRelay]:
         for unit in controlnet_data.controlnet_items:
             unit.func_params_state.init_args["input_image"] = gallery_data.selected_video.thumbnail
-        return (gallery_data.selected_video.thumbnail, gallery_data.selected_video.path, os.path.basename(gallery_data.selected_video.path), not controlnet_restore_relay)
+
+        return (gallery_data.selected_video.thumbnail, gallery_data.selected_video.path, os.path.basename(gallery_data.selected_video.path), not imggen_restore_relay)
 
     def _handle_save_video_clicked(self, input_video_path: str, output_video_name: str, editor_state_data: AvatarEditor.StateData):
         output_path = os.path.join(editor_state_data.profile.motion_matched_video_directory, output_video_name)

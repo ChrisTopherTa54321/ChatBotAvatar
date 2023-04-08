@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Tuple, Dict, Any, List
+from typing import Any, Dict, List, Tuple
 
 import gradio as gr
 import numpy as np
+from gradio.components import Component
 from PIL import Image
 from webuiapi import ControlNetUnit
 
@@ -38,6 +39,7 @@ class ImageGenerator(GradioComponent):
         self._ui_txt2img_settings: FuncParamSettings = None
         self._ui_img2img_settings: FuncParamSettings = None
         self._ui_state: gr.State = None
+        self._ui_restore_state_relay: EventWrapper = None
 
         self._build_component()
 
@@ -57,14 +59,25 @@ class ImageGenerator(GradioComponent):
         self._ui_img2img_btn = gr.Button("Img2Img", variant="primary")
 
         # These Accordions must start Open to trigger proper gradio load events
-        with gr.Accordion(label="ControlNet Parameters") as controlnet_accordion:
+        with gr.Accordion(label="ControlNet Parameters", open=False) as controlnet_accordion:
             self._ui_controlnet_settings = ControlNetSettings()
 
-        with gr.Accordion(label="Txt2Img Parameters") as txt2img_accordion:
+        with gr.Accordion(label="Txt2Img Parameters", open=False) as txt2img_accordion:
             self._ui_txt2img_settings = FuncParamSettings(image_gen.get_txt2img_method())
 
-        with gr.Accordion(label="Img2Img Parameters") as img2img_accordion:
+        with gr.Accordion(label="Img2Img Parameters", open=False) as img2img_accordion:
             self._ui_img2img_settings = FuncParamSettings(image_gen.get_img2img_method())
+
+        accordions = [controlnet_accordion, txt2img_accordion, img2img_accordion]
+        self._ui_restore_state_relay = EventWrapper.create_wrapper(fn=self._restore_state,
+                                                                   inputs=[self.instance_data, self._ui_controlnet_settings.instance_data, self._ui_controlnet_settings.restore_state_relay,
+                                                                           self._ui_txt2img_settings.instance_data, self._ui_txt2img_settings.restore_state_relay,
+                                                                           self._ui_img2img_settings.instance_data, self._ui_img2img_settings.restore_state_relay],
+                                                                   outputs=[self._ui_controlnet_settings.restore_state_relay, self._ui_txt2img_settings.restore_state_relay,
+                                                                            self._ui_img2img_settings.restore_state_relay],
+                                                                   pre_fn=lambda: len(accordions)*(gr.Accordion.update(open=True),), pre_outputs=accordions,
+                                                                   post_fn=lambda: len(accordions)*(gr.Accordion.update(open=False),), post_outputs=accordions,
+                                                                   fn_delay=5, post_fn_delay=5)
 
         ui_btn_list = [self._ui_img2img_btn, self._ui_txt2img_btn]
         disable_btn_ret = [gr.Button.update(interactive=False, variant="secondary")]
@@ -92,6 +105,21 @@ class ImageGenerator(GradioComponent):
 
         self._ui_txt2img_btn.click(**EventWrapper.get_event_args(txt2img_wrapper))
         self._ui_img2img_btn.click(**EventWrapper.get_event_args(img2img_wrapper))
+
+    def _restore_state(self, inst_data: ImageGenerator.StateData, controlnet_data: ControlNetSettings.StateData, controlnet_refresh_relay: bool,
+                       txt2img_data: FuncParamSettings.StateData, txt2img_refresh_relay: bool, img2img_data: FuncParamSettings.StateData, img2img_refresh_relay: bool):
+        # Trigger refresh on any components with data set
+
+        controlnet_item = controlnet_data.controlnet_items[controlnet_data.selected_idx] if controlnet_data.selected_idx < len(
+            controlnet_data.controlnet_items) else None
+        if controlnet_item is not None and len(controlnet_item.func_params_state.init_args) > 0:
+            controlnet_refresh_relay = not controlnet_refresh_relay
+        if len(txt2img_data.init_args) > 0:
+            txt2img_refresh_relay = not txt2img_refresh_relay
+        if len(img2img_data.init_args) > 0:
+            img2img_refresh_relay = not img2img_refresh_relay
+
+        return (controlnet_refresh_relay, txt2img_refresh_relay, img2img_refresh_relay)
 
     def _handle_txt2img_click(self, inst_data: ImageGenerator.StateData, controlnet_inst_data: ControlNetSettings.StateData,
                               txt2img_inst_data: FuncParamSettings.StateData, prompt: str, negative_prompt: str) -> Tuple[np.array]:
@@ -128,6 +156,10 @@ class ImageGenerator(GradioComponent):
     @property
     def instance_data(self) -> gr.State:
         return self._ui_state
+
+    @property
+    def restore_state_relay(self) -> Component:
+        return self._ui_restore_state_relay
 
     @property
     def controlnet_settings(self) -> ControlNetSettings:
