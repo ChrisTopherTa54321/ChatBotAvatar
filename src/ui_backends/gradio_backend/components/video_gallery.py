@@ -34,6 +34,7 @@ class VideoGallery(GradioComponent):
         self._ui_image_gallery: gr.Gallery = None
         self._ui_refresh_btn: gr.Button = None
         self._select_event_relay: EventWrapper = None
+        self._refresh_relay: EventWrapper = None
         self._ui_state: gr.State = None
         self._list_getter: Callable[[VideoGallery.StateData], List[VideoInfo]] = list_getter
         self._list_getter_extra_inputs: List[Component] = list_getter_inputs
@@ -53,8 +54,9 @@ class VideoGallery(GradioComponent):
 
         gallery_change_inputs = [self.instance_data] + self._list_getter_extra_inputs
         gallery_change_outputs = [self._ui_image_gallery]
-        self._ui_refresh_btn.click(fn=self._handle_refresh_btn, inputs=gallery_change_inputs,
-                                   outputs=gallery_change_outputs)
+        self._refresh_relay = EventWrapper.create_wrapper(
+            fn=self._handle_refresh, inputs=gallery_change_inputs, outputs=gallery_change_outputs)
+        self._ui_refresh_btn.click(**EventWrapper.get_event_args(self._refresh_relay))
         self._ui_image_gallery.select(fn=self._handle_gallery_selection,
                                       inputs=[self.instance_data, self._select_event_relay],
                                       outputs=[self._select_event_relay])
@@ -66,7 +68,7 @@ class VideoGallery(GradioComponent):
 
         assert (os.path.basename(ui_state.selected_video.path) == event_data.value)
 
-    def _handle_refresh_btn(self, ui_state: StateData, *args):
+    def _handle_refresh(self, ui_state: StateData, *args):
         assert (len(args) == len(self._list_getter_extra_inputs))
         if callable(self._list_getter):
             ui_state.video_list = self._list_getter(ui_state, *args)
@@ -76,7 +78,7 @@ class VideoGallery(GradioComponent):
         output = []
         for video in ui_state.video_list:
             output.append((ImageUtils.open_or_blank(video.thumbnail), os.path.basename(video.path)))
-        return output
+        return [output]
 
     @property
     def instance_data(self) -> gr.State:
@@ -85,6 +87,10 @@ class VideoGallery(GradioComponent):
     @property
     def select_event_relay(self) -> Component:
         return self._select_event_relay
+
+    @property
+    def refresh_relay(self) -> Component:
+        return self._refresh_relay
 
     @property
     def gallery_component(self) -> gr.Gallery:

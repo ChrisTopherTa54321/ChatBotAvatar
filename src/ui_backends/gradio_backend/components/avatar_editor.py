@@ -77,21 +77,24 @@ class AvatarEditor(GradioComponent):
                     with gr.Row():
                         with gr.Column(scale=1):
                             with gr.Box():
-                                gr.Markdown("Step 1: Select a driving video")
+                                gr.Markdown(
+                                    "<p>Step 1: Select a driving video.</p>The selected video can be previewed in Step 3.")
                                 self._ui_new_driving_vid_gallery = VideoGallery(
                                     label="", list_getter=self._get_driving_videos)
                         with gr.Column(scale=1):
                             with gr.Box():
-                                gr.Markdown("Step 2: Generate an image matching the driving video pose")
+                                gr.Markdown(
+                                    "<p>Step 2: Generate an image matching the driving video pose.</p>Type a description of your character and click Txt2Img to generate an image matching the pose.")
                                 self._ui_new_driving_src_imagegen = ImageGenerator()
                     with gr.Row():
                         with gr.Column(scale=1):
                             with gr.Box():
-                                gr.Markdown("Step 3: Generate a motion-matched video using the generated image")
+                                gr.Markdown("<p>Step 3: Generate a motion-matched video using the generated image</p>")
                                 self._ui_motion_matcher = MotionMatcher()
                         with gr.Column(scale=1):
                             with gr.Box():
-                                gr.Markdown("Step 4: Save the video to the Avatar's profile")
+                                gr.Markdown(
+                                    "Step 4: Save the video to the Avatar's profile. This video will then be available for lipsync.")
                                 self._ui_out_video_name = gr.Textbox(
                                     label="Video Name", placeholder="Name for video within Avatar profile")
                                 self._ui_save_video_btn = gr.Button("Save Video")
@@ -100,8 +103,8 @@ class AvatarEditor(GradioComponent):
                         self.instance_data])
 
         refresh_components = [self._ui_filename_textbox, self._ui_name_textbox,
-                              self.ui_profile_image, self._ui_voice_settings.update_ui_relay]
-        refresh_inputs = refresh_components + [self._ui_voice_settings.instance_data, self.instance_data]
+                              self.ui_profile_image, self._ui_voice_settings.update_ui_relay, self._ui_new_driving_vid_gallery.refresh_relay]
+        refresh_inputs = refresh_components + [self._ui_voice_settings.instance_data, self.instance_data, ]
         refresh_outputs = refresh_components
 
         self._relay_update_ui = EventWrapper.create_wrapper(
@@ -141,7 +144,7 @@ class AvatarEditor(GradioComponent):
                                                                            self._ui_new_driving_src_imagegen.restore_state_relay, set_defaults_relay2],
                                                                        post_outputs=[self._ui_new_driving_src_imagegen.restore_state_relay, set_defaults_relay2])
 
-        AppData.get_instance().app.load(fn=lambda x: not x, inputs=[set_defaults_relay], outputs=[set_defaults_relay])
+        AppData.get_instance().app.load(**EventWrapper.get_event_args(set_defaults_relay))
 
     def _set_controlnet_defaults(self, controlnet_data: ControlNetSettings.StateData):
         @dataclass
@@ -207,10 +210,10 @@ class AvatarEditor(GradioComponent):
     def instance_data(self) -> gr.State:
         return self._ui_state
 
-    def _handle_refresh_trigger(self, filename: str, name: str, image, refresh_trigger: bool, tts_state_data: TtsSettings.StateData, editor_state_data):
+    def _handle_refresh_trigger(self, filename: str, name: str, image, refresh_trigger: bool, gallery_refresh_relay: bool, tts_state_data: TtsSettings.StateData, editor_state_data):
         tts_state_data.voice = editor_state_data.profile.voice
         # Outputs: name: str, profile: image, voice_refresh_trigger
-        return (editor_state_data.profile.name, editor_state_data.profile.friendly_name, editor_state_data.profile.preview_image, not refresh_trigger)
+        return (editor_state_data.profile.name, editor_state_data.profile.friendly_name, editor_state_data.profile.preview_image, not refresh_trigger, not gallery_refresh_relay)
 
     def _handle_save_profile_clicked(self, filename: str, friendly_name: str, profile_image, voice_state_data: TtsSettings.StateData, editor_state_data: AvatarEditor.StateData):
 

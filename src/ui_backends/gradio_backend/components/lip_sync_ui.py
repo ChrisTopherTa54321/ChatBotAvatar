@@ -55,13 +55,12 @@ class LipSyncUi(GradioComponent):
                                                           interactive=True, variant="primary")),
                                                       post_outputs=[self._ui_submit_btn])
 
-        self._ui_update_player_relay = EventRelay.create_relay(lambda x: [persist_file_event(x)],
-                                                               inputs=[self._ui_input_audio_file], outputs=[self._ui_input_audio_player])
+        self._ui_update_player_relay = EventWrapper.create_wrapper(lambda x: [persist_file_event(x)],
+                                                                   inputs=[self._ui_input_audio_file], outputs=[self._ui_input_audio_player])
 
         self._ui_submit_btn.click(**EventWrapper.get_event_args(lipsync_wrapper))
 
-        self._ui_input_audio_file.change(fn=lambda x: not x, inputs=[self._ui_update_player_relay],
-                                         outputs=[self._ui_update_player_relay])
+        self._ui_input_audio_file.change(**EventWrapper.get_event_args(self._ui_update_player_relay))
 
     def _handle_lip_sync_clicked(self, audio_path: tempfile.NamedTemporaryFile, image_or_video_path: str) -> Tuple[str]:
         '''
