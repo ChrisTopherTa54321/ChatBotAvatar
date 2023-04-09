@@ -43,7 +43,7 @@ class Manager:
 
     def create_new_profile(self, profile_name: str) -> Profile:
         profile_path = self.avatar_dir.joinpath(Manager.sanitize_name(profile_name))
-        new_profile = Profile(profile_root_dir=profile_path)
+        new_profile = Profile(profile_root_dir=profile_path, friendly_name=profile_name)
         new_profile.save(output_dir=profile_path, overwrite=False)
         return new_profile
 

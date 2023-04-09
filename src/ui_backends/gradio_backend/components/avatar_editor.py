@@ -21,6 +21,7 @@ from ui_backends.gradio_backend.components.image_generator import \
     ImageGenerator
 from ui_backends.gradio_backend.components.motion_matcher import MotionMatcher
 from ui_backends.gradio_backend.components.tts_settings import TtsSettings
+from ui_backends.gradio_backend.components.tts_speaker import TtsSpeaker
 from ui_backends.gradio_backend.components.video_gallery import VideoGallery
 from ui_backends.gradio_backend.utils.app_data import AppData
 from ui_backends.gradio_backend.utils.event_relay import EventRelay
@@ -49,6 +50,7 @@ class AvatarEditor(GradioComponent):
         self._ui_out_video_name: gr.Textbox = None
         self._ui_save_video_btn: gr.Button = None
 
+        self._ui_voice_speaker: TtsSpeaker = None
         self._ui_voice_settings: TtsSettings = None
         self._relay_update_ui: Component = None
         self._ui_state: gr.State = None
@@ -68,6 +70,8 @@ class AvatarEditor(GradioComponent):
                     self._ui_profile_image = gr.Image(label="Profile Image")
                 with gr.Column(scale=2):
                     self._ui_voice_settings = TtsSettings()
+                    with gr.Accordion(label="Test Voice Settings", open=False):
+                        self._ui_voice_speaker = TtsSpeaker(tts_settings=self._ui_voice_settings)
 
             with gr.Row():
                 self._ui_save_profile = gr.Button("Save Profile")
@@ -210,7 +214,7 @@ class AvatarEditor(GradioComponent):
     def instance_data(self) -> gr.State:
         return self._ui_state
 
-    def _handle_refresh_trigger(self, filename: str, name: str, image, refresh_trigger: bool, gallery_refresh_relay: bool, tts_state_data: TtsSettings.StateData, editor_state_data):
+    def _handle_refresh_trigger(self, filename: str, name: str, image, refresh_trigger: bool, gallery_refresh_relay: bool, tts_state_data: TtsSpeaker.StateData, editor_state_data):
         tts_state_data.voice = editor_state_data.profile.voice
         # Outputs: name: str, profile: image, voice_refresh_trigger
         return (editor_state_data.profile.name, editor_state_data.profile.friendly_name, editor_state_data.profile.preview_image, not refresh_trigger, not gallery_refresh_relay)

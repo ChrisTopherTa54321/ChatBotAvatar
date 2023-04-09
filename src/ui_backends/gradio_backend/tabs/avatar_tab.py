@@ -6,6 +6,7 @@ from typing import List, Tuple
 
 import gradio as gr
 import numpy as np
+from gradio.components import Component
 from typing_extensions import override
 
 from avatar.manager import Manager, Profile
@@ -43,7 +44,7 @@ class AvatarTab(GradioTab):
         with gr.Row():
             self._ui_refresh_btn = gr.Button("Refresh Avatar List")
             self._ui_new_btn = gr.Button("Create New Avatar")
-            self._ui_del_btn = gr.Button("Delete")
+            self._ui_del_btn = gr.Button("Delete Avatar")
         with gr.Row():
             self._ui_avatar_editor = AvatarEditor()
 
@@ -52,11 +53,18 @@ class AvatarTab(GradioTab):
         self._ui_refresh_relay = EventWrapper.create_wrapper(
             fn=self._handle_refresh, outputs=[self._ui_avatar_list_gallery])
 
-        hidden_name_box: gr.Textbox = gr.Textbox(visible=False)
+        # The final 'input' disappears somewhere on the way through _js ton to _handle_new_avatar_clicked, so make it a dummy
+        dummy_component: gr.Textbox = gr.Textbox(visible=False)
         self._ui_new_btn.click(fn=self._handle_new_avatar_clicked,
-                               _js='prompt_for_name', inputs=[hidden_name_box], outputs=[hidden_name_box])
-        self._ui_del_btn.click(fn=self._handle_delete_clicked, _js="confirm_prompt",
-                               inputs=[hidden_name_box], outputs=[hidden_name_box])
+                               _js='prompt_for_name', inputs=[self._ui_refresh_relay, dummy_component],
+                               outputs=[self._ui_refresh_relay])
+
+        delete_relay = EventWrapper.create_wrapper(fn=self._handle_delete,
+                                                   inputs=[self.instance_data, self._ui_refresh_relay],
+                                                   outputs=[self._ui_refresh_relay])
+
+        self._ui_del_btn.click(fn=None, _js="relay_confirm_prompt",
+                               inputs=[delete_relay], outputs=[delete_relay])
         self._ui_refresh_btn.click(**EventWrapper.get_event_args(self._ui_refresh_relay))
         self._ui_avatar_list_gallery.select(fn=self._handle_avatar_list_selection,
                                             inputs=[self._ui_avatar_editor.update_ui_relay,
@@ -65,15 +73,16 @@ class AvatarTab(GradioTab):
 
         AppData.get_instance().app.load(**EventWrapper.get_event_args(self._ui_refresh_relay))
 
-    def _handle_new_avatar_clicked(self, new_name: str):
+    def _handle_new_avatar_clicked(self, new_name: str, refresh_relay: bool):
         logger.info(f"Create new avatar: {new_name}")
-        profile: Profile = self._manager.create_new_profile(profile_name=new_name)
+        self._manager.create_new_profile(profile_name=new_name)
+        return not refresh_relay
 
-    def _handle_delete_clicked(self, confirm: bool):
-        confirm = (not confirm or confirm != "False")
-        if confirm:
-            self._manager.delete_profile(self._manager.active_profile)
-            self._manager.refresh()
+    def _handle_delete(self, inst_data, refresh_relay: bool):
+        self._manager.delete_profile(inst_data.profile)
+        inst_data.profile = None
+        self._manager.refresh()
+        return not refresh_relay
 
     def _handle_refresh(self) -> Tuple[gr.Gallery]:
         ''' Refresh the gallery '''
@@ -83,8 +92,12 @@ class AvatarTab(GradioTab):
                   for profile in self._manager.list_avatars()]
         return [images]
 
-    def _handle_avatar_list_selection(self, event_data: gr.SelectData, update_trigger: bool, editor_instance_data, state_data, refresh_relay: bool) -> Tuple[None]:
+    def _handle_avatar_list_selection(self, event_data: gr.SelectData, update_trigger: bool, editor_instance_data: AvatarEditor.StateData, inst_data, refresh_relay: bool) -> Tuple[None]:
         ''' Handles an avatar being selected from the list gallery '''
-        state_data.profile = self._manager.list_avatars()[event_data.index]
-        editor_instance_data.profile = state_data.profile
+        inst_data.profile = self._manager.list_avatars()[event_data.index]
+        editor_instance_data.profile = inst_data.profile
         return (not update_trigger, not refresh_relay)
+
+    @property
+    def instance_data(self) -> gr.State:
+        return self._ui_state

@@ -136,3 +136,7 @@ class TtsSpeaker(GradioComponent):
     @property
     def prompt(self) -> gr.Textbox:
         return self._ui_prompt_textbox
+
+    @property
+    def tts_settings(self) -> TtsSettings:
+        return self._ui_tts_settings

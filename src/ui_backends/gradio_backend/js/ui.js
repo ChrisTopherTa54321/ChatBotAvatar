@@ -1,9 +1,14 @@
-function prompt_for_name() {
-    return prompt("Enter name");
+function prompt_for_name(...theArgs) {
+    var ret = [prompt("Enter name")].concat(theArgs);
+    console.log(ret);
+    return ret;
 }
 
-function confirm_prompt() {
-    return confirm("Are you sure?");
+function relay_confirm_prompt(relay_value, ...theArgs) {
+    if (confirm("Are you sure?")) {
+        return !relay_value;
+    }
+    return relay_value;
 }
 
 function find_relation(search_value, target_query, max_levels = 10) {
