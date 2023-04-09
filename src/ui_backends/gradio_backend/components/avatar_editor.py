@@ -74,7 +74,7 @@ class AvatarEditor(GradioComponent):
                         self._ui_voice_speaker = TtsSpeaker(tts_settings=self._ui_voice_settings)
 
             with gr.Row():
-                self._ui_save_profile = gr.Button("Save Profile")
+                self._ui_save_profile = gr.Button("Save Profile", variant="primary")
 
             with gr.Accordion(label="Motion Matched Videos"):
                 with gr.Tab("Create New"):

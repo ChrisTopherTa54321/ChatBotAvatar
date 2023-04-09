@@ -92,7 +92,7 @@ class AvatarTab(GradioTab):
                   for profile in self._manager.list_avatars()]
         return [images]
 
-    def _handle_avatar_list_selection(self, event_data: gr.SelectData, update_trigger: bool, editor_instance_data: AvatarEditor.StateData, inst_data, refresh_relay: bool) -> Tuple[None]:
+    def _handle_avatar_list_selection(self, event_data: gr.SelectData, update_trigger: bool, editor_instance_data: AvatarEditor.StateData, inst_data: StateData, refresh_relay: bool) -> Tuple[None]:
         ''' Handles an avatar being selected from the list gallery '''
         inst_data.profile = self._manager.list_avatars()[event_data.index]
         editor_instance_data.profile = inst_data.profile
