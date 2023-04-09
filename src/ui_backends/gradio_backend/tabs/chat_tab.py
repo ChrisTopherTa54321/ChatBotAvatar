@@ -1,9 +1,10 @@
 ''' Chat interface tab '''
 import logging
 from dataclasses import dataclass
-from typing import Tuple
-
+from typing import Tuple, List
+import numpy as np
 import gradio as gr
+import random
 from typing_extensions import override
 
 from avatar.manager import Manager, Profile
@@ -13,6 +14,8 @@ from ui_backends.gradio_backend.components.tts_speaker import TtsSpeaker
 from ui_backends.gradio_backend.tab import GradioTab
 from ui_backends.gradio_backend.utils.app_data import AppData
 from ui_backends.gradio_backend.utils.event_wrapper import EventWrapper
+from ui_backends.gradio_backend.components.lip_sync_ui import LipSyncUi
+from ui_backends.gradio_backend.utils.helpers import audio_to_file_event
 from utils.shared import Shared
 
 logger = logging.getLogger(__file__)
@@ -31,6 +34,8 @@ class ChatTab(GradioTab):
         self._refresh_gallery_relay: EventWrapper = None
         self._ui_state: gr.State = None
         self._ui_speaker_name_box: gr.Textbox = None
+        self._ui_video: gr.Video = None
+        self._lip_sync_ui: LipSyncUi = None
 
     @override
     def build_ui(self):
@@ -41,6 +46,7 @@ class ChatTab(GradioTab):
 
         with gr.Box(visible=False):
             self._ui_voice_settings = TtsSettings()
+            self._lip_sync_ui = LipSyncUi()
 
         with gr.Row():
             with gr.Column(scale=1):
@@ -51,10 +57,21 @@ class ChatTab(GradioTab):
                     self._ui_speaker_name_box = gr.Textbox(
                         label="Selected Avatar", placeholder="No avatar selected", interactive=False)
                     self._tts_speaker = TtsSpeaker(tts_settings=self._ui_voice_settings)
+            with gr.Column(scale=1):
+                self._ui_video = gr.Video()
+                gen_video_btn = gr.Button("Generate Video From Last Speech")
 
         self._refresh_gallery_relay = EventWrapper.create_wrapper(
             fn=self._handle_refresh, outputs=[self._avatar_gallery])
         refresh_btn.click(**EventWrapper.get_event_args(self._refresh_gallery_relay))
+
+        sync_lipsync_relay = EventWrapper.create_wrapper(pre_fn=self._run_lipsync, pre_inputs=[self.instance_data, self._tts_speaker.output_audio], pre_outputs=[
+                                                         self._lip_sync_ui.input_audio_file, self._lip_sync_ui.input_video],
+                                                         fn_delay=5,
+                                                         **EventWrapper.get_event_args(self._lip_sync_ui.run_lipsync_relay))
+        self._lip_sync_ui.output_video.change(
+            fn=lambda x: x, inputs=[self._lip_sync_ui.output_video], outputs=[self._ui_video])
+        gen_video_btn.click(**EventWrapper.get_event_args(sync_lipsync_relay))
 
         self._ui_chatbox.chat_response.change(
             fn=lambda x: x, inputs=[self._ui_chatbox.chat_response], outputs=[self._tts_speaker.prompt])
@@ -64,6 +81,18 @@ class ChatTab(GradioTab):
                                     outputs=[self._ui_speaker_name_box])
 
         AppData.get_instance().app.load(**EventWrapper.get_event_args(self._refresh_gallery_relay))
+
+    def _run_lipsync(self, inst_data: StateData, audio_data: Tuple[int, np.ndarray]) -> Tuple[gr.Audio, gr.Video]:
+        audio_filename: str = audio_to_file_event(audio_data)
+        motion_videos = inst_data.profile._get_matched_videos()
+        if len(motion_videos) > 0:
+            video_path = random.choice(motion_videos).path
+        else:
+            video_path = None
+        return (audio_filename, video_path)
+
+    def _handle_gen_video(self, inst_data: StateData, audio, *args):
+        pass
 
     def _handle_refresh(self) -> Tuple[gr.Gallery]:
         ''' Refresh the gallery '''
