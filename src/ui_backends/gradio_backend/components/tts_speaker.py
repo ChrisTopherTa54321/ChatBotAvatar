@@ -54,7 +54,7 @@ class TtsSpeaker(GradioComponent):
         with gr.Row():
             self._ui_streaming_audio = gr.Audio(label="Streaming Audio", elem_id="streaming_audio", visible=False)
         with gr.Row():
-            self._ui_full_audio = gr.Audio(label="Full Audio", elem_id="full_audio")
+            self._ui_full_audio = gr.Audio(label="Full Audio", elem_id="full_audio", visible=False)
         self._ui_instance_id = gr.Markdown(
             value=lambda: f"<div id='{uuid.uuid4().hex}'>Search Target!</div>", visible=False)
 
@@ -115,7 +115,7 @@ class TtsSpeaker(GradioComponent):
             all_audio = (sampling_rate, all_audio_buffer)
         else:
             all_audio = (None, None)
-        return [all_audio, gr.update(visible=False), gr.update(visible=True)]
+        return [gr.Audio.update(visible=True, value=all_audio), gr.update(visible=False), gr.update(visible=True)]
 
     def _streaming_audio_handler(self, inst_data: TtsSpeaker.StateData, play_streaming_relay: bool):
         success = inst_data.chunker.wait_for_new_audio()
