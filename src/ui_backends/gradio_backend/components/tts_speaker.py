@@ -59,8 +59,8 @@ class TtsSpeaker(GradioComponent):
             value=lambda: f"<div id='{uuid.uuid4().hex}'>Search Target!</div>", visible=False)
 
         # When this event is *output to* it will run its function and then output to its outputs
-        self._ui_play_streaming_relay = EventRelay.create_relay(_js="start_audio_streamer", inputs=[
-            self._ui_instance_id], name="Autoplayer Relay")
+        self._ui_play_streaming_relay = EventWrapper.create_wrapper(fn_delay=1, _js="start_audio_streamer_drop2", inputs=[
+                                                                    self._ui_instance_id], name="Autoplayer Relay")
         self._ui_full_audio_relay = EventRelay.create_relay(
             fn=self._full_audio_handler, inputs=[self.instance_data], outputs=[self._ui_full_audio, self._ui_cancel_btn, self._ui_submit_btn], name="Full Audio Relay")
         self._ui_stream_audio_relay = EventRelay.create_relay(

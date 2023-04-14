@@ -26,13 +26,22 @@ function find_relation(search_value, target_query, max_levels = 10) {
     return result
 }
 
+function start_audio_streamer_drop2(...theArgs) {
+    start_audio_streamer(...theArgs.slice(2));
+    return theArgs
+}
+
 function start_audio_streamer(search_value, ...theArgs) {
     search_uuid = search_value.match(/id='(.*)'/)[1]
     streaming_audio = find_relation(search_uuid, "#streaming_audio")?.[0]?.getElementsByTagName("AUDIO")?.[0];
     if (streaming_audio) {
         refresh_toggle = find_relation(search_uuid, "#refresh_streaming")?.[0]?.querySelectorAll('input[type=checkbox')?.[0];
         streaming_audio.addEventListener('ended', function () { refresh_toggle.click(); });
-        streaming_audio.addEventListener('canplay', function () { streaming_audio.play(); });
+        if (streaming_audio.readyState == 4) { // Ready to play?
+            streaming_audio.play();
+        } else {
+            streaming_audio.addEventListener('canplay', function () { streaming_audio.play(); });
+        }
     }
 }
 

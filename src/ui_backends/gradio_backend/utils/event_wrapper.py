@@ -17,8 +17,8 @@ class EventWrapper():
     @classmethod
     def create_wrapper(cls,
                        fn: Callable = None, inputs: List[Component] = None, outputs: List[Component] = None,
-                       pre_fn: Callable = None, pre_inputs: List[Component] = None, pre_outputs: List[Component] = None,
-                       post_fn: Callable = None, post_inputs: List[Component] = None, post_outputs: List[Component] = None,
+                       pre_fn: Callable = None, pre_inputs: List[Component] = None, pre_outputs: List[Component] = None, pre_kwargs: Dict[str, Any] = None,
+                       post_fn: Callable = None, post_inputs: List[Component] = None, post_outputs: List[Component] = None, post_kwargs: Dict[str, Any] = None,
                        pre_fn_delay: int = 0, fn_delay: int = 0, post_fn_delay: int = 0,
                        elem_id: str = None, name: str = "WrappedEvent", **kwargs) -> Component:
         '''
@@ -46,6 +46,8 @@ class EventWrapper():
             Component: dummy component. When passed as an input and output to a Gradio Event, returning !input will trigger the wrapped functions
         '''
         assert gr.context.Context.block is not None, "wrap_func must be called within a 'gr.Blocks' 'with' context"
+        pre_kwargs = pre_kwargs or {}
+        post_kwargs = post_kwargs or {}
 
         def pre_func_wrapper(dummy, relay_toggle: bool, *wrapped_pre_inputs):
             wrapped_pre_inputs = list(wrapped_pre_inputs)
@@ -88,7 +90,7 @@ class EventWrapper():
         post_inputs = [fake_relay, fake_relay] + EventRelay.as_list(post_inputs)
         post_outputs = [fake_relay, fake_relay] + EventRelay.as_list(post_outputs)
         post_relay: EventRelay = EventRelay.create_relay(
-            fn=post_func_wrapper, inputs=post_inputs, outputs=post_outputs, name=f"post_{name}_relay")
+            fn=post_func_wrapper, inputs=post_inputs, outputs=post_outputs, name=f"post_{name}_relay", **post_kwargs)
 
         for i in range(post_fn_delay):
             post_relay = EventRelay.create_relay(fn=lambda dummy, relay: (dummy, not relay),
@@ -106,7 +108,7 @@ class EventWrapper():
         pre_inputs = [fake_relay, call_relay] + EventRelay.as_list(pre_inputs)
         pre_outputs = [fake_relay, call_relay] + EventRelay.as_list(pre_outputs)
         pre_relay: EventRelay = EventRelay.create_relay(
-            fn=pre_func_wrapper, inputs=pre_inputs, outputs=pre_outputs, name=f"pre_{name}_relay")
+            fn=pre_func_wrapper, inputs=pre_inputs, outputs=pre_outputs, name=f"pre_{name}_relay", **pre_kwargs)
 
         for i in range(pre_fn_delay):
             pre_fn_relay = EventRelay.create_relay(fn=lambda dummy, relay: (dummy, not relay),

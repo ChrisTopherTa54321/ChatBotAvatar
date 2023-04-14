@@ -44,7 +44,7 @@ class TtsChunker:
         data: np.array
         sample_rate: int
 
-    def __init__(self, chunk_word_cnt: int = 256, grow_chunks: bool = True, jobs: int = 4):
+    def __init__(self, chunk_word_cnt: int = 256, grow_chunks: bool = True, jobs: int = 8):
         '''
         Initialize a TtsChunker
 
