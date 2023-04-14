@@ -17,7 +17,7 @@ from typing import Callable, List, Tuple
 import gradio as gr
 from gradio.components import Component
 from typing_extensions import override
-
+from utils.stack_info import get_caller
 logger = logging.getLogger(__file__)
 
 
@@ -47,12 +47,7 @@ class EventRelay():
         '''
         assert gr.context.Context.block is not None, "wrap_func must be called within a 'gr.Blocks' 'with' context"
 
-        stack_info = inspect.stack()
-        for frame in stack_info:
-            if os.path.basename(frame.filename).startswith("event_"):
-                continue
-            break
-        caller_info = f"{os.path.basename(frame.filename)}:{frame.lineno} {frame.function}"
+        caller_info = get_caller(exclude_func_prefixes=["event_"])
 
         trigger_checkbox: gr.Checkbox = gr.Checkbox(label=name, elem_id=elem_id, value=False, visible=False)
 
