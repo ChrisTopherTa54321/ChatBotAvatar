@@ -41,6 +41,8 @@ class ChatTab(GradioTab):
     def build_ui(self):
         self._ui_state = gr.State(value=ChatTab.StateData)
 
+        gen_lipsync_label: str = "Generate Video From Last Speech"
+
         with gr.Box():
             self. _ui_chatbox = ChatBox()
 
@@ -59,7 +61,7 @@ class ChatTab(GradioTab):
                     self._tts_speaker = TtsSpeaker(tts_settings=self._ui_voice_settings)
             with gr.Column(scale=1):
                 self._ui_video = gr.Video()
-                gen_video_btn = gr.Button("Generate Video From Last Speech")
+                gen_video_btn = gr.Button(gen_lipsync_label)
 
         self._refresh_gallery_relay = EventWrapper.create_wrapper(
             fn=self._handle_refresh, outputs=[self._avatar_gallery])
@@ -67,11 +69,12 @@ class ChatTab(GradioTab):
 
         sync_lipsync_relay = EventWrapper.create_wrapper(pre_fn=self._run_lipsync, pre_inputs=[self.instance_data, self._tts_speaker.output_audio], pre_outputs=[
                                                          self._lip_sync_ui.input_audio_file, self._lip_sync_ui.input_video],
-                                                         fn_delay=5,
                                                          **EventWrapper.get_event_args(self._lip_sync_ui.run_lipsync_relay))
         self._lip_sync_ui.output_video.change(
-            fn=lambda x: x, inputs=[self._lip_sync_ui.output_video], outputs=[self._ui_video])
-        gen_video_btn.click(**EventWrapper.get_event_args(sync_lipsync_relay))
+            fn=lambda x: (x, gr.Button.update(value=gen_lipsync_label, interactive=True)), inputs=[self._lip_sync_ui.output_video], outputs=[self._ui_video, gen_video_btn])
+
+        gen_video_btn.click(fn=lambda relay: (not relay, gr.Button.update(value="Generating Video...", interactive=False)), inputs=[
+                            sync_lipsync_relay], outputs=[sync_lipsync_relay, gen_video_btn])
 
         self._ui_chatbox.chat_response.change(
             fn=lambda x: x, inputs=[self._ui_chatbox.chat_response], outputs=[self._tts_speaker.prompt])
