@@ -19,18 +19,37 @@ logger = logging.getLogger(__file__)
 class EventWrapper():
     # Sometimes to trick gradio into behaving we need placeholder inputs or outputs. Share fake_relay for this.
     fake_relay: EventRelay = None
+    error_cnt: int = 0
 
     @dataclass
     class WrappedFunc:
-        func: Callable = None
+        fn: Callable = None
         inputs: List[Component] = None
         outputs: List[Component] = None
         kwargs: Dict[str, Any] = None
         elem_id: str = None
         pre_delay: int = 0
 
+        def __post_init__(self):
+            self.inputs = self.inputs or []
+            self.outputs = self.outputs or []
+            self.kwargs = self.kwargs or {}
+
     @classmethod
-    def create_wrapper_list(cls, wrapped_func_list: List[EventWrapper.WrappedFunc], name: str = None) -> Component:
+    def create_wrapper_list(cls, wrapped_func_list: List[EventWrapper.WrappedFunc], error_func: EventWrapper.WrappedFunc = None,
+                            finally_func: EventWrapper.WrappedFunc = None, name: str = None) -> Component:
+        '''
+        Creates an EventWrapper which executes a list of functions
+
+        Args:
+            wrapped_func_list (List[EventWrapper.WrappedFunc]): list of wrapped functions for this wrapper to execute
+            error_func (EventWrapper.WrappedFunc, optional): function to call if a function throws an exception
+            finally_func (EventWrapper.WrappedFunc, optional): clean up function, always called last even in error case
+            name (str, optional): debug name for this wrapper
+
+        Returns:
+            Component: _description_
+        '''
         assert gr.context.Context.block is not None, "wrap_func must be called within a 'gr.Blocks' 'with' context"
 
         if EventWrapper.fake_relay is None:
@@ -40,25 +59,56 @@ class EventWrapper():
         if name is None:
             name = caller_info
 
+        # Define a 'finally function' which always runs at the end of a wrapper. Useful for clean-up like re-enabling buttons
+        if finally_func is not None:
+            # Just put it on the end of the function list, then set up a handler to call it on the error path
+            wrapped_func_list.append(finally_func)
+
+            func_inputs = [EventWrapper.fake_relay, EventWrapper.fake_relay] + EventRelay.as_list(finally_func.inputs)
+            func_outputs = [EventWrapper.fake_relay, EventWrapper.fake_relay] + EventRelay.as_list(finally_func.outputs)
+
+            def finally_func_wrapper(func: EventWrapper.WrappedFunc, dummy1, dummy2, *input_args):
+                # No error handling here. What would clean up the clean up function?
+                finally_func_outputs = func.fn(*input_args, **func.kwargs) if func.fn else []
+                return [dummy1, dummy2] + EventRelay.as_list(finally_func_outputs)
+            error_finally_relay: Component = EventRelay.create_relay(fn=partial(finally_func_wrapper, finally_func), inputs=func_inputs,
+                                                                     outputs=func_outputs, name=f"{name}_finally_func", **finally_func.kwargs)
+        else:
+            error_finally_relay = EventWrapper.fake_relay
+
+        # Define an error handler function which updates the error message and triggers the 'finally' function
+
+        def error_func_wrapper(func: EventWrapper.WrappedFunc, finally_relay_toggle: bool, error_msg: str, *args, **kwargs):
+            if error_msg == "":
+                return (finally_relay_toggle, gr.Textbox.update(visible=False))
+            return (not finally_relay_toggle, gr.Textbox.update(visible=True, value=error_msg))
+
+        error_txt_relay = gr.Textbox("", visible=False, label="Error Message")
+        error_txt_relay.change(fn=partial(error_func_wrapper, error_func), inputs=[
+                               error_finally_relay, error_txt_relay], outputs=[error_finally_relay, error_txt_relay])
+
         # Iterate over the functions, creating relays to run the function and then toggle the next function...
         next_relay: Component = EventWrapper.fake_relay
 
-        def func_wrapper(func: EventWrapper.WrappedFunc, dummy, relay_toggle: bool, *wrapped_inputs):
+        def func_wrapper(func: EventWrapper.WrappedFunc, error_relay: str, relay_toggle: bool, *wrapped_inputs):
+            error_relay = ""
             wrapped_inputs = list(wrapped_inputs)
             try:
-                wrapped_func_outputs = func.func(*wrapped_inputs) if func.func else []
+                wrapped_func_outputs = func.fn(*wrapped_inputs) if func.fn else []
             except Exception as e:
-                wrapped_func_outputs = [gr.update() for _ in func.outputs]
                 traceback.print_exception(e)
-                logger.error(f"{name} {caller_info}: {e}")
-            return [dummy, not relay_toggle] + EventRelay.as_list(wrapped_func_outputs)
+                EventWrapper.error_cnt += 1  # This ensures repeat errors have unique messages
+                error_msg: str = f"{EventWrapper.error_cnt} - {name}: {e}"
+                logger.error(error_msg)
+                return [error_msg, relay_toggle] + [gr.update() for _ in func.outputs]
+            return [error_relay, not relay_toggle] + EventRelay.as_list(wrapped_func_outputs)
 
         for idx, func in enumerate(reversed(wrapped_func_list)):
-            func_inputs = [EventWrapper.fake_relay, next_relay] + EventRelay.as_list(func.inputs)
-            func_outputs = [EventWrapper.fake_relay, next_relay] + EventRelay.as_list(func.outputs)
+            func_inputs = [error_txt_relay, next_relay] + EventRelay.as_list(func.inputs)
+            func_outputs = [error_txt_relay, next_relay] + EventRelay.as_list(func.outputs)
 
             func_relay: Component = EventRelay.create_relay(fn=partial(func_wrapper, func), inputs=func_inputs,
-                                                            outputs=func_outputs, name=f"{name}_func{len(wrapped_func_list)-idx}")
+                                                            outputs=func_outputs, name=f"{name}_func{len(wrapped_func_list)-idx}", **func.kwargs)
             next_relay = func_relay
 
             # TODO: Make this a single count down textbox?
@@ -101,11 +151,11 @@ class EventWrapper():
         '''
 
         wrapped_funcs: List[EventWrapper.WrappedFunc] = []
-        wrapped_funcs.append(EventWrapper.WrappedFunc(func=pre_fn, inputs=pre_inputs,
+        wrapped_funcs.append(EventWrapper.WrappedFunc(fn=pre_fn, inputs=pre_inputs,
                              outputs=pre_outputs, kwargs=pre_kwargs, pre_delay=pre_fn_delay))
-        wrapped_funcs.append(EventWrapper.WrappedFunc(func=fn, inputs=inputs,
+        wrapped_funcs.append(EventWrapper.WrappedFunc(fn=fn, inputs=inputs,
                              outputs=outputs, kwargs=kwargs, pre_delay=fn_delay, elem_id=elem_id))
-        wrapped_funcs.append(EventWrapper.WrappedFunc(func=post_fn, inputs=post_inputs,
+        wrapped_funcs.append(EventWrapper.WrappedFunc(fn=post_fn, inputs=post_inputs,
                              outputs=post_outputs, kwargs=post_kwargs, pre_delay=post_fn_delay))
         return EventWrapper.create_wrapper_list(wrapped_func_list=wrapped_funcs, name=name)
 

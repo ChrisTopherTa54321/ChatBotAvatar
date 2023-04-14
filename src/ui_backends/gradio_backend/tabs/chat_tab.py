@@ -6,6 +6,7 @@ import numpy as np
 import gradio as gr
 import random
 from typing_extensions import override
+from functools import partial
 
 from avatar.manager import Manager, Profile
 from ui_backends.gradio_backend.components.chat_box import ChatBox
@@ -67,14 +68,28 @@ class ChatTab(GradioTab):
             fn=self._handle_refresh, outputs=[self._avatar_gallery])
         refresh_btn.click(**EventWrapper.get_event_args(self._refresh_gallery_relay))
 
-        sync_lipsync_relay = EventWrapper.create_wrapper(pre_fn=self._run_lipsync, pre_inputs=[self.instance_data, self._tts_speaker.output_audio], pre_outputs=[
-                                                         self._lip_sync_ui.input_audio_file, self._lip_sync_ui.input_video],
-                                                         **EventWrapper.get_event_args(self._lip_sync_ui.run_lipsync_relay))
+        def set_lipsync_buttons_state(enable: bool):
+            if enable:
+                msg = gen_lipsync_label
+            else:
+                msg = "Generating Video..."
+            return [gr.Button.update(interactive=enable, value=msg)]
+
+        sync_lipsync_relay = EventWrapper.create_wrapper_list(
+            wrapped_func_list=[
+                EventWrapper.WrappedFunc(fn=partial(set_lipsync_buttons_state, False), outputs=[gen_video_btn]),
+                EventWrapper.WrappedFunc(fn=self._run_lipsync,
+                                         inputs=[self.instance_data, self._tts_speaker.output_audio],
+                                         outputs=[self._lip_sync_ui.input_audio_file, self._lip_sync_ui.input_video]),
+                EventWrapper.WrappedFunc(**EventWrapper.get_event_args(self._lip_sync_ui.run_lipsync_relay))
+            ],
+            finally_func=EventWrapper.WrappedFunc(fn=partial(set_lipsync_buttons_state, True), outputs=[gen_video_btn]),
+        )
+
         self._lip_sync_ui.output_video.change(
             fn=lambda x: (x, gr.Button.update(value=gen_lipsync_label, interactive=True)), inputs=[self._lip_sync_ui.output_video], outputs=[self._ui_video, gen_video_btn])
 
-        gen_video_btn.click(fn=lambda relay: (not relay, gr.Button.update(value="Generating Video...", interactive=False)), inputs=[
-                            sync_lipsync_relay], outputs=[sync_lipsync_relay, gen_video_btn])
+        gen_video_btn.click(**EventWrapper.get_event_args(sync_lipsync_relay))
 
         self._ui_chatbox.chat_response.change(
             fn=lambda x: x, inputs=[self._ui_chatbox.chat_response], outputs=[self._tts_speaker.prompt])
