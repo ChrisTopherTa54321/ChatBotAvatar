@@ -82,7 +82,7 @@ class AvatarEditor(GradioComponent):
                         with gr.Column(scale=1):
                             with gr.Box():
                                 gr.Markdown(
-                                    "<p>Step 1: Select a driving video.</p>The selected video can be previewed in Step 3.")
+                                    "<p>Step 1: Select a driving video (then give Step 2 a few seconds to get set up).</p>The selected video can be previewed in Step 3.")
                                 self._ui_new_driving_vid_gallery = VideoGallery(
                                     label="", list_getter=self._get_driving_videos)
                         with gr.Column(scale=1):

@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Tuple
 
 import gradio as gr
 import numpy as np
+from functools import partial
 from gradio.components import Component
 
 from ui_backends.gradio_backend.component import GradioComponent
@@ -33,6 +34,7 @@ class LipSyncUi(GradioComponent):
         self._ui_update_player_relay: Component = None
         self._ui_state: gr.State = None
         self._run_lipsync_relay: EventWrapper = None
+        self._job_done_relay: EventWrapper = None
 
         self._build_component()
 
@@ -46,18 +48,30 @@ class LipSyncUi(GradioComponent):
             self._ui_submit_btn = gr.Button("Run Lip Sync", variant="primary")
             self._ui_output_video = gr.Video(label="Lip Sync Output")
 
-        self._run_lipsync_relay = EventWrapper.create_wrapper(fn=self._handle_lip_sync_clicked,
-                                                              inputs=[self._ui_input_audio_file, self._ui_input_video],
-                                                              outputs=[self._ui_output_video],
-                                                              pre_fn=lambda: (gr.Button.update(
-                                                                  interactive=False, variant="secondary")),
-                                                              pre_outputs=[self._ui_submit_btn],
-                                                              post_fn=lambda: (gr.Button.update(
-                                                                  interactive=True, variant="primary")),
-                                                              post_outputs=[self._ui_submit_btn])
+        def set_buttons_state(enable: bool):
+            if enable:
+                return [gr.Button.update(interactive=True, variant="primary")]
+            else:
+                return [gr.Button.update(interactive=False, variant="secondary")]
+
+        self._job_done_relay = EventWrapper.create_wrapper_list(
+                wrapped_func_list=[
+                    EventWrapper.WrappedFunc(fn=partial(set_buttons_state, True), outputs=[self._ui_submit_btn])
+                    ])
+
+        self._run_lipsync_relay = EventWrapper.create_wrapper_list(
+            wrapped_func_list=[
+                EventWrapper.WrappedFunc(fn=partial(set_buttons_state, False), outputs=[self._ui_submit_btn]),
+                EventWrapper.WrappedFunc(fn=self._handle_lip_sync_clicked,
+                                         inputs=[self._ui_input_audio_file, self._ui_input_video],
+                                         outputs=[self._ui_output_video])
+            ],
+            finally_func=EventWrapper.WrappedFunc(**EventWrapper.get_event_args(self._job_done_relay))
+        )
 
         self._ui_update_player_relay = EventWrapper.create_wrapper(lambda x: [persist_file_event(x)],
                                                                    inputs=[self._ui_input_audio_file], outputs=[self._ui_input_audio_player])
+
 
         self._ui_submit_btn.click(**EventWrapper.get_event_args(self._run_lipsync_relay))
 
@@ -77,13 +91,14 @@ class LipSyncUi(GradioComponent):
 
         args = Shared.getInstance().args
         unique_id: str = uuid.uuid4().hex
+
+        from avatar.lip_sync import LipSync
+        out_filename: str = os.path.join(args.temp_dir, f"{unique_id}_synced_video.mp4")
         try:
-            from avatar.lip_sync import LipSync
-            out_filename: str = os.path.join(args.temp_dir, f"{unique_id}_synced_video.mp4")
             LipSync.render(image_or_video_path, audio_path.name, out_filename)
         except Exception as e:
-            logger.error(e)
-            out_filename = None
+            raise gr.Error("LipSync error. Is FFMPEG installed?")
+
         return out_filename
 
     @property
@@ -109,3 +124,7 @@ class LipSyncUi(GradioComponent):
     @property
     def output_video(self) -> gr.Video:
         return self._ui_output_video
+
+    @property
+    def job_done_event(self) -> Component:
+        return self._job_done_relay

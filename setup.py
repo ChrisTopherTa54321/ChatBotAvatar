@@ -4,6 +4,7 @@ import logging
 import sys
 import os
 import subprocess
+import shutil
 
 from dataclasses import dataclass
 from typing import List
@@ -41,25 +42,31 @@ if __name__ == "__main__":
     if args.verbose:
         logging.basicConfig(stream=sys.stdout, level=logging.INFO, force=True)
 
-    subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements_nodeps.txt"])
     subprocess.run([sys.executable, "-m", "pip", "install", "-U", "-r", "requirements.txt"])
-    subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements_external.txt"])
 
     import git
     for module in needed_modules:
         try:
-            repo = git.Repo.clone_from(module.repo, to_path=module.dir_name)
-        except git.GitCommandError as e:
-            if 'exists' in e.stderr:
+            if os.path.isdir(module.dir_name):
                 repo = git.Repo(module.dir_name)
+            else:
+                repo = git.Repo.clone_from(module.repo, to_path=module.dir_name)
+        except git.GitCommandError as e:
             logger.error(e)
 
         if module.sha is not None:
             repo.head.reference = repo.commit(rev=module.sha)
 
-        # repo_sub_dir = os.path.basename(module.dir_name)
-        # requirement_files = [os.path.join(module.dir_name, "requirements.txt"), os.path.join(module.dir_name, repo_sub_dir, "requirements.txt")]
-        # for req_txt in requirement_files:
-        #     if os.path.exists(req_txt):
-        #         subprocess.run([sys.executable, "-m", "pip", "install", "-r", req_txt])
-        # logger.info(repo)
+    sample_driving_video = os.path.join("external/repos/tpsmm", "tpsmm", "assets", "driving.mp4")
+    try:
+        shutil.copyfile(sample_driving_video, os.path.join("avatar/driving_videos/sample.mp4"))
+    except Exception as e:
+        pass
+
+
+    try:
+        output = subprocess.run("ffmpeg", stdout=open(os.devnull, 'wb'), stderr=open(os.devnull, 'wb'))
+    except Exception as e:
+        logger.error("\n\n\n***********************\nCould not find ffmpeg!\nffmpeg must be installed and accessible in your system path\n***********************\n")
+
+    logger.info("Setup complete. Run application with 'webui'")
