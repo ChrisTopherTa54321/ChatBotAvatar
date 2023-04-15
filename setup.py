@@ -2,11 +2,12 @@
 import argparse
 import logging
 import sys
+import os
+import subprocess
 
 from dataclasses import dataclass
 from typing import List
 
-import git
 
 logger = logging.getLogger(__file__)
 
@@ -21,7 +22,7 @@ def _parse_args():
 @dataclass
 class GitSubmodule:
     repo: str
-    dir: str
+    dir_name: str
     sha: str = None
 
 
@@ -40,14 +41,25 @@ if __name__ == "__main__":
     if args.verbose:
         logging.basicConfig(stream=sys.stdout, level=logging.INFO, force=True)
 
+    subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements_nodeps.txt"])
+    subprocess.run([sys.executable, "-m", "pip", "install", "-U", "-r", "requirements.txt"])
+    subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements_external.txt"])
+
+    import git
     for module in needed_modules:
         try:
-            repo = git.Repo.clone_from(module.repo, to_path=module.dir)
+            repo = git.Repo.clone_from(module.repo, to_path=module.dir_name)
         except git.GitCommandError as e:
             if 'exists' in e.stderr:
-                repo = git.Repo(module.dir)
+                repo = git.Repo(module.dir_name)
             logger.error(e)
 
         if module.sha is not None:
             repo.head.reference = repo.commit(rev=module.sha)
-        logger.info(repo)
+
+        # repo_sub_dir = os.path.basename(module.dir_name)
+        # requirement_files = [os.path.join(module.dir_name, "requirements.txt"), os.path.join(module.dir_name, repo_sub_dir, "requirements.txt")]
+        # for req_txt in requirement_files:
+        #     if os.path.exists(req_txt):
+        #         subprocess.run([sys.executable, "-m", "pip", "install", "-r", req_txt])
+        # logger.info(repo)

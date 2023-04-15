@@ -37,6 +37,9 @@ class MotionMatch:
                 "--source_image", source_image,
                 "--driving_video", driving_video,
                 "--result_video", output_path]
+        import torch
+        if not torch.cuda.is_available():
+            args.append("--cpu")
         main(parseArgs(args))
 
     @classmethod

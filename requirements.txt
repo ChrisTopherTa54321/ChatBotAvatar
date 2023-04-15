@@ -1,14 +1,17 @@
+--extra-index-url https://download.pytorch.org/whl/cu113
+torch==1.12.1+cu113
+torchvision==0.13.1+cu113
+numpy>=1.24
 azure-cognitiveservices-speech==1.26.0
 gdown==4.6.4
+gitpython
 gradio==3.21.0
 imageio-ffmpeg
+nltk
 openai==0.27.0
-pyttsx3==2.90
-torch==1.13.1
-TTS==0.11.1
+opencv-python
 pillow
-sanitize-filename
+pyttsx3==2.90
 gitpython
-./repos/wav2lip/
-./repos/thin-plate-spline-motion
-git+https://github.com/mix1009/sdwebuiapi
+sanitize_filename
+git+https://github.com/mix1009/sdwebuiapi@a1cb4c6d2f39389d6e962f0e6436f4aa74cd752c
