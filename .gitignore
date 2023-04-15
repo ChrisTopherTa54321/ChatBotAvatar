@@ -1,7 +1,7 @@
 .env
 .vscode
 *.pyc
-avatar/
+#avatar/
 tmp/
 
 requirements.txt
