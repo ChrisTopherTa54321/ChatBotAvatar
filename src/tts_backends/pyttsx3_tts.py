@@ -28,7 +28,7 @@ class Pyttsx3Tts(Tts):
         self._voices: List[Pyttsx3Tts.Voice] = [Pyttsx3Tts.Voice(tts_inst=self, voice_info=voice) for voice in voices]
         matching_lang_voices = [voice for voice in self._voices if voice.get_language() == language]
         if len(matching_lang_voices) > 0:
-            self.voices = matching_lang_voices
+            self._voices = matching_lang_voices
 
     @override
     def get_voice_list(self) -> List[Tts.Voice]:
