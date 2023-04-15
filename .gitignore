@@ -6,3 +6,4 @@ tmp/
 
 requirements.txt
 .gitignore
+external/

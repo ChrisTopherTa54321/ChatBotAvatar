@@ -83,7 +83,7 @@ class ChatTab(GradioTab):
                                          outputs=[self._lip_sync_ui.input_audio_file, self._lip_sync_ui.input_video]),
                 EventWrapper.WrappedFunc(**EventWrapper.get_event_args(self._lip_sync_ui.run_lipsync_relay))
             ],
-            finally_func=EventWrapper.WrappedFunc(fn=partial(set_lipsync_buttons_state, True), outputs=[gen_video_btn]),
+            error_func=EventWrapper.WrappedFunc(fn=partial(set_lipsync_buttons_state, True), outputs=[gen_video_btn]),
         )
 
         self._lip_sync_ui.output_video.change(

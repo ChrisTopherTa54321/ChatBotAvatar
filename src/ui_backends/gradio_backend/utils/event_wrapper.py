@@ -78,14 +78,21 @@ class EventWrapper():
 
         # Define an error handler function which updates the error message and triggers the 'finally' function
 
-        def error_func_wrapper(func: EventWrapper.WrappedFunc, finally_relay_toggle: bool, error_msg: str, *args, **kwargs):
-            if error_msg == "":
-                return (finally_relay_toggle, gr.Textbox.update(visible=False))
-            return (not finally_relay_toggle, gr.Textbox.update(visible=True, value=error_msg))
-
         error_txt_relay = gr.Textbox("", visible=False, label="Error Message")
-        error_txt_relay.change(fn=partial(error_func_wrapper, error_func), inputs=[
-                               error_finally_relay, error_txt_relay], outputs=[error_finally_relay, error_txt_relay])
+        if error_func is None:
+            error_func = EventWrapper.WrappedFunc()
+
+        func_inputs = [error_finally_relay, error_txt_relay] + EventRelay.as_list(error_func.inputs)
+        func_outputs = [error_finally_relay, error_txt_relay] + EventRelay.as_list(error_func.outputs)
+
+        def error_func_wrapper(func: EventWrapper.WrappedFunc, finally_relay_toggle: bool, error_msg: str, *input_args):
+            if error_msg == "":
+                return [finally_relay_toggle, gr.Textbox.update(visible=False)] + [gr.update() for _ in func.outputs]
+            error_func_outputs = func.fn(*input_args, **func.kwargs) if func.fn else []
+
+            return [not finally_relay_toggle, gr.Textbox.update(visible=True, value=error_msg)] + EventRelay.as_list(error_func_outputs)
+
+        error_txt_relay.change(fn=partial(error_func_wrapper, error_func), inputs=func_inputs, outputs=func_outputs)
 
         # Iterate over the functions, creating relays to run the function and then toggle the next function...
         next_relay: Component = EventWrapper.fake_relay

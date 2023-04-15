@@ -40,11 +40,16 @@ class MotionMatcher(GradioComponent):
             self._ui_generate_btn = gr.Button("Generate Output", variant="primary")
             self._ui_video_out = gr.Video(label="Output Video", interactive=False).style(height=256, width=256)
 
-        generate_wrapper = EventWrapper.create_wrapper(fn=self._handle_generate_click,
-                                                       inputs=[self._ui_image_in, self._ui_video_in], outputs=[
-                                                           self._ui_video_out],
-                                                       pre_fn=lambda: [gr.Button.update(interactive=False, variant="secondary")], pre_outputs=[self._ui_generate_btn],
-                                                       post_fn=lambda: [gr.Button.update(interactive=True, variant="primary")], post_outputs=[self._ui_generate_btn])
+        generate_wrapper = EventWrapper.create_wrapper_list(
+            wrapped_func_list=[
+                EventWrapper.WrappedFunc(fn=lambda: [gr.Button.update(
+                    interactive=False, variant="secondary")], outputs=[self._ui_generate_btn]),
+                EventWrapper.WrappedFunc(fn=self._handle_generate_click,
+                                         inputs=[self._ui_image_in, self._ui_video_in],
+                                         outputs=[self._ui_video_out])
+            ],
+            finally_func=EventWrapper.WrappedFunc(fn=lambda: [gr.Button.update(interactive=True, variant="primary")], outputs=[self._ui_generate_btn]))
+
         self._ui_generate_btn.click(**EventWrapper.get_event_args(generate_wrapper))
 
     def _handle_generate_click(self, image_in: np.ndarray, video_path_in: str) -> None:

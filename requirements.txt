@@ -8,6 +8,7 @@ torch==1.13.1
 TTS==0.11.1
 pillow
 sanitize-filename
+gitpython
 ./repos/wav2lip/
 ./repos/thin-plate-spline-motion
 git+https://github.com/mix1009/sdwebuiapi

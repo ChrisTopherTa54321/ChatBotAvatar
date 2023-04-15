@@ -3,6 +3,7 @@ from avatar.profile import Profile
 from pathlib import Path
 from typing import List
 from utils.shared import Shared
+from wav2lip.wav2lip.inference import main, parseArgs
 import os
 import subprocess
 import logging
@@ -27,13 +28,11 @@ class LipSync:
         if not cls._check_models():
             raise Exception("Missing Wav2Lip checkpoint")
 
-        args = ["python", "-m", "wav2lip",
-                "--checkpoint_path", LipSync.CHECKPOINT,
+        args = ["--checkpoint_path", LipSync.CHECKPOINT,
                 "--face", input_image_or_video,
                 "--audio", input_audio,
                 "--outfile", output_path]
-        output = subprocess.check_output(args)
-        logger.warn(f"{output}")
+        main(parseArgs(args))
 
     @classmethod
     def _check_models(cls) -> bool:

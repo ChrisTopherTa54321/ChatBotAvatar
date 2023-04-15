@@ -9,6 +9,7 @@ import time
 import sys
 script_dir = pathlib.Path(__file__).parent.resolve()
 sys.path.append(os.path.join(script_dir, "src"))
+sys.path.append(os.path.join(script_dir, "external", "repos"))
 
 
 from utils.text_utils import TextUtils
