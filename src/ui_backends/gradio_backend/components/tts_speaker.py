@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import gradio as gr
 from gradio.components import Component
+from functools import partial
 
 from ui_backends.gradio_backend.component import GradioComponent
 from ui_backends.gradio_backend.components.tts_settings import TtsSettings
@@ -68,12 +69,22 @@ class TtsSpeaker(GradioComponent):
             outputs=[self._ui_streaming_audio, self._ui_play_streaming_relay], elem_id="refresh_streaming",
             name="Stream Audio Relay")
 
-        submit_prompt_wrapper = EventWrapper.create_wrapper(fn=self._handle_submit_click,
-                                                            inputs=[self.instance_data, self._ui_tts_settings.instance_data,
-                                                                    self._ui_prompt_textbox, self._ui_stream_audio_relay, self._ui_full_audio_relay, self._ui_stream_checkbox],
-                                                            outputs=[self._ui_stream_audio_relay,
-                                                                     self._ui_full_audio_relay],
-                                                            pre_fn=lambda: (gr.update(visible=False), gr.update(visible=True)), pre_outputs=[self._ui_submit_btn, self._ui_cancel_btn])
+        def set_button_states(synthesizing: bool):
+            return (gr.Button.update(visible=not synthesizing), gr.Button.update(visible=synthesizing))
+
+        submit_prompt_wrapper = EventWrapper.create_wrapper_list(
+            wrapped_func_list=[
+                EventWrapper.WrappedFunc(fn=partial(set_button_states, synthesizing=True),
+                                         outputs=[self._ui_submit_btn, self._ui_cancel_btn]),
+                EventWrapper.WrappedFunc(fn=self._handle_submit_click,
+                                         inputs=[self.instance_data, self._ui_tts_settings.instance_data,
+                                                 self._ui_prompt_textbox, self._ui_stream_audio_relay, self._ui_full_audio_relay, self._ui_stream_checkbox],
+                                         outputs=[self._ui_stream_audio_relay,
+                                                  self._ui_full_audio_relay]
+                                         )],
+            finally_func=EventWrapper.WrappedFunc(fn=partial(set_button_states, synthesizing=False), outputs=[
+                                                  self._ui_submit_btn, self._ui_cancel_btn])
+        )
 
         self._ui_submit_btn.click(**EventWrapper.get_event_args(submit_prompt_wrapper))
         self._ui_cancel_btn.click(fn=self._handle_cancel_tts, inputs=[self.instance_data])
@@ -93,6 +104,10 @@ class TtsSpeaker(GradioComponent):
         '''
         if inst_data.chunker and not inst_data.chunker.is_done():
             logger.warn("Already a TTS chunker!")
+            return (streaming_relay, full_audio_relay)
+
+        if tts_settings.voice is None:
+            logger.warn("No voice selected!")
             return (streaming_relay, full_audio_relay)
 
         inst_data.chunker = TtsChunker()
